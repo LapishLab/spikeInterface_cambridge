@@ -18,8 +18,8 @@ import shutil
 import os
 
 # Get the task ID
-#taskID = int(sys.argv[1])
-taskID = 1
+taskID = int(sys.argv[1])
+#taskID = 1
 print('Task ID:',taskID)
 
 # Load the data set list
