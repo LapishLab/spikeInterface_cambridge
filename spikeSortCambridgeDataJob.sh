@@ -3,16 +3,16 @@
 #SBATCH -J spikeSortCambridgeDataJob
 #SBATCH -p gpu
 #SBATCH -A r00229
-#SBATCH -o spikeSortCambridgeDataJob_%j.txt
-#SBATCH -e spikeSortCambridgeDataJob_%j.err
+#SBATCH -o logs/spikeSortCambridgeDataJob_%j.txt
+#SBATCH -e logs/spikeSortCambridgeDataJob_%j.err
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=nmtimme@iu.edu
+#SBATCH --mail-user=daswyga@iu.edu
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=128GB
-#SBATCH --time=02:00:00
-#SBATCH --array=1-12
+#SBATCH --time=04:00:00
+#SBATCH --array=1-6
 
 #Load modules
 module load miniconda/4.12.0
