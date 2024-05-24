@@ -15,11 +15,13 @@ import matplotlib.pyplot as plt
 import csv as csv
 import pathlib
 import shutil
+import sys
 import os
+import warnings
 
 # Get the task ID
-taskID = int(sys.argv[1])
-#taskID = 1
+#taskID = int(sys.argv[1])
+taskID = 1
 print('Task ID:',taskID)
 
 # Load the data set list
@@ -57,6 +59,13 @@ print('device_channel_indices', device_channel_indices)
 fullRec = si.read_openephys(openephys_folder,stream_name='Signals CH')
 print('raw_rec',fullRec)
 
+if fullRec.get_num_segments() > 1:
+    segmentDuration = [fullRec.get_duration(i) for i in range(fullRec.get_num_segments())]
+    warnings.warn('Raw data contains multiple segments with the following time durations (s):'
+                  + '\n' + str(segmentDuration)
+                  + '\n I will just spike sort the longest segment')
+    fullRec = fullRec.select_segments(int(np.argmax(segmentDuration)))
+    
 for i in range(len(probeNames)):
     ### Create Probe according to Channel map ###
     probe = pi.get_probe(manufacturer='cambridgeneurotech', probe_name=probeNames[i])
