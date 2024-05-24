@@ -11,7 +11,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=128GB
-#SBATCH --time=04:00:00
+#SBATCH --time=02:00:00
 #SBATCH --array=1-6
 
 #Load modules
