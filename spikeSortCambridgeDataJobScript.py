@@ -18,10 +18,11 @@ import shutil
 import sys
 import os
 import warnings
+import pandas
 
 # Get the task ID
-#taskID = int(sys.argv[1])
-taskID = 1
+taskID = int(sys.argv[1])
+#taskID = 1
 print('Task ID:',taskID)
 
 # Load the data set list
@@ -107,17 +108,47 @@ for i in range(len(probeNames)):
     
     ### Spike sort ###
     KS3Params = si.get_default_sorter_params('kilosort3')
-    KS3Params = {'do_correction': False} # Turn off drift correction
-    KS3Params = {'NT': 512000} # Increase the NT parameter to avoid EIG did not converge errors
+    KS3Params['do_correction'] = False # Turn off drift correction
+    KS3Params['NT'] = 512000 # Increase the NT parameter to avoid EIG did not converge errors
     print('KS3Params:',KS3Params)
     
     tempSubFolder = os.path.join(spikeSortTempFolder, probeNames[i])
-    si.run_sorter('kilosort3',
+    sorting = si.run_sorter('kilosort3',
                 rec,
                 output_folder= tempSubFolder,
                 singularity_image="spikeinterface/kilosort3-compiled-base:latest",
                 verbose=True,
                 **KS3Params)
+    
+    ### Extract waveforms and compute quality metrics ###
+    try:
+        print('calculating  metrics')
+        waveformFolder = os.path.join(tempSubFolder, 'waveforms')
+        we = si.extract_waveforms(
+            sorting=sorting,
+            recording=rec, 
+            folder=waveformFolder,
+            overwrite=True)
+        metrics = si.compute_quality_metrics(we)
+        metricsFileName = os.path.join(tempSubFolder,'sorter_output','qualityMetrics.csv')
+        metrics.to_csv(metricsFileName)
+    except:
+        warnings.warn('Computing quality metrics failed')
+
+        
+# a = rec.get_traces()        
+# ps = np.abs(np.fft.fft(a,axis=0))**2
+# time_step = 1 / 30000
+# freqs = np.fft.fftfreq(len(a[:,0]), time_step)
+# f = freqs[freqs>0]
+# ps = ps[freqs>0,:]
+# ps_avg = np.mean(ps, axis=1)
+# plt.ioff()
+# plt.loglog(f,ps_avg)
+# plt.xlabel('Frequency (Hz)')
+# plt.ylabel('power')
+# plt.xlim(left=100)
+# plt.savefig('powerSpectrum.png', dpi=300)
 
 # Look at some example traces
 # fig, ax = plt.subplots(figsize=(20, 10))
