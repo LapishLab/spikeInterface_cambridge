@@ -21,8 +21,8 @@ import warnings
 import pandas
 
 # Get the task ID
-taskID = int(sys.argv[1])
-#taskID = 1
+#taskID = int(sys.argv[1])
+taskID = 1
 print('Task ID:',taskID)
 
 # Load the data set list
@@ -89,7 +89,7 @@ for i in range(len(probeNames)):
     plt.scatter(l[:,0], l[:,1])
 
     ### Preprocess data ###
-    rec = si.highpass_filter(rec, freq_min=300.)
+    rec = si.bandpass_filter(recording=rec,freq_min=300.,freq_max=3000.)
     
     # Show the noise histogram
     noise = si.get_noise_levels(rec, return_scaled=True)
@@ -108,8 +108,8 @@ for i in range(len(probeNames)):
     
     ### Spike sort ###
     KS3Params = si.get_default_sorter_params('kilosort3')
-    KS3Params['do_correction'] = False # Turn off drift correction
-    KS3Params['NT'] = 512000 # Increase the NT parameter to avoid EIG did not converge errors
+    #KS3Params['do_correction'] = False # Turn off drift correction
+    #KS3Params['NT'] = 512000 # Increase the NT parameter to avoid EIG did not converge errors
     print('KS3Params:',KS3Params)
     
     tempSubFolder = os.path.join(spikeSortTempFolder, probeNames[i])
