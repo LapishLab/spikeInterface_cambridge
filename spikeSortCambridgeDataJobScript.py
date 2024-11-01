@@ -21,8 +21,8 @@ import warnings
 import pandas
 
 # Get the task ID
-#taskID = int(sys.argv[1])
-taskID = 1
+taskID = int(sys.argv[1])
+#taskID = 9
 print('Task ID:',taskID)
 
 # Load the data set list
@@ -108,9 +108,11 @@ for i in range(len(probeNames)):
     
     ### Spike sort ###
     KS3Params = si.get_default_sorter_params('kilosort3')
-    #KS3Params['do_correction'] = False # Turn off drift correction
-    #KS3Params['NT'] = 512000 # Increase the NT parameter to avoid EIG did not converge errors
+    KS3Params['do_correction'] = False # Turn off drift correction
+    KS3Params['NT'] = 512000 # Increase the NT parameter to avoid EIG did not converge errors
     print('KS3Params:',KS3Params)
+    
+    #export SPIKEINTERFACE_DEV_PATH="~/.conda/envs/si_env/lib/python3.9/site-packages/spikeinterface"
     
     tempSubFolder = os.path.join(spikeSortTempFolder, probeNames[i])
     sorting = si.run_sorter('kilosort3',
@@ -118,6 +120,7 @@ for i in range(len(probeNames)):
                 output_folder= tempSubFolder,
                 singularity_image="spikeinterface/kilosort3-compiled-base:latest",
                 verbose=True,
+                delete_container_files=False,
                 **KS3Params)
     
     ### Extract waveforms and compute quality metrics ###
