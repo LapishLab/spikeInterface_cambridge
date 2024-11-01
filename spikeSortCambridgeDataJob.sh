@@ -12,10 +12,10 @@
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=128GB
 #SBATCH --time=02:00:00
-#SBATCH --array=1-6
+#SBATCH --array=10-16
 
 #Load modules
-module load miniconda/4.12.0
+module load miniconda
 module load singularity/3.8.3
 module load cudatoolkit/11.7
 module load apptainer/1.1.8
