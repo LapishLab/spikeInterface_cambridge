@@ -8,7 +8,7 @@
 # Import necessary pieces of software
 import spikeinterface.full as si
 import probeinterface as pi
-print(si.__version__)
+print('Spike Interface Version: ',si.__version__)
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -23,7 +23,7 @@ import pandas
 # Get the task ID
 taskID = int(sys.argv[1])
 #taskID = 9
-print('Task ID:',taskID)
+#print('Task ID:',taskID)
 
 # Load the data set list
 f = open('/N/project/lapishLabWorkspace/SpikeInterfaceSpikeSorting/cambridgeRecordings.txt', 'r')
@@ -55,7 +55,7 @@ f.close()
 probeNames = channelMap.pop(0)
 device_channel_indices = np.array(channelMap).astype(int)
 device_channel_indices = device_channel_indices -np.min(device_channel_indices) # TODO check that we are consistent on 0 indexing 
-print('device_channel_indices', device_channel_indices)
+#print('device_channel_indices', device_channel_indices)
 # Read the ephys data (stream names are 'Signals AUX', 'Signals CH', 'Signals ADC')
 fullRec = si.read_openephys(openephys_folder)
 
@@ -65,7 +65,7 @@ signalChannels = fullRec.channel_ids[isSignalChannel]
 fullRec = fullRec.channel_slice(channel_ids=signalChannels)
 
 #
-print('raw_rec',fullRec)
+print('Signal Recording: ',fullRec)
 
 if fullRec.get_num_segments() > 1:
     segmentDuration = [fullRec.get_duration(i) for i in range(fullRec.get_num_segments())]
@@ -78,7 +78,7 @@ for i in range(len(probeNames)):
     ### Create Probe according to Channel map ###
     probe = pi.get_probe(manufacturer='cambridgeneurotech', probe_name=probeNames[i])
     probe.set_device_channel_indices(device_channel_indices[:,i])
-    print(probe)
+    #print(probe)
     #pi.plotting.plot_probe(probe)
     
     ### Pull out recording channels for this probe ###
@@ -86,7 +86,7 @@ for i in range(len(probeNames)):
     last = first+len(device_channel_indices)
     amp_ids = fullRec.get_channel_ids()
     rec = fullRec.channel_slice(amp_ids[first:last])
-    print(rec.get_channel_ids())
+    #print(rec.get_channel_ids())
     
     ### Apply probe to subset of recording ###
     rec = rec.set_probe(probe, group_mode="by_shank")
@@ -107,11 +107,11 @@ for i in range(len(probeNames)):
     # Identify bad channels and remove them
     bad_channel_ids, channel_labels = si.detect_bad_channels(rec,method="std",std_mad_threshold=3)
     rec = rec.remove_channels(bad_channel_ids)
-    print('bad_channel_ids', bad_channel_ids)
+    print('bad_channel_ids: ', bad_channel_ids)
 
     # Common median reference the data
     rec = si.common_reference(rec, operator="median", reference="global")
-    print('rec',rec)
+    #print('rec',rec)
     
     ### Spike sort ###
     KS3Params = si.get_default_sorter_params('kilosort3')
