@@ -115,8 +115,8 @@ for i in range(len(probeNames)):
     
     ### Spike sort ###
     KS3Params = si.get_default_sorter_params('kilosort3')
-    KS3Params['do_correction'] = False # Turn off drift correction
-    KS3Params['NT'] = 512000 # Increase the NT parameter to avoid EIG did not converge errors
+    #KS3Params['do_correction'] = False # Turn off drift correction
+    #KS3Params['NT'] = 512000 # Increase the NT parameter to avoid EIG did not converge errors
     print('KS3Params:',KS3Params)
     
     #export SPIKEINTERFACE_DEV_PATH="~/.conda/envs/si_env/lib/python3.9/site-packages/spikeinterface"
