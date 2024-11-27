@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#First input ($1) is path to sortSingleRec.py
+#Second input ($2) is path to job folder
+
 #Load modules
 module load miniconda
 module load singularity/3.8.3
@@ -10,4 +13,4 @@ module load apptainer/1.1.8
 conda activate si_env
 
 #Run the specified script in parallel passing a SLURM array number each time
-srun python $1 $SLURM_ARRAY_TASK_ID
+srun python $1 $2 $SLURM_ARRAY_TASK_ID

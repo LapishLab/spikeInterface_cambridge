@@ -9,7 +9,7 @@ def main():
     jobFolder = getJobFolder()
     recSettings = getRecordingSettings(jobFolder=jobFolder)
     batchSettings = getBatchSettings(jobFolder=jobFolder, recSettings=recSettings)
-    sendBatchRequest(batchSettings=batchSettings)
+    sendBatchRequest(batchSettings=batchSettings, jobFolder=jobFolder)
 
 def getJobFolder():
     ## Check that valid job folder was provided as argument
@@ -78,7 +78,7 @@ def getRecordingSettings(jobFolder):
         if not path.isfile(mapPath):
             raise Exception("no channel map found at: \n" + mapPath)
     return recSettings
-def sendBatchRequest(batchSettings):
+def sendBatchRequest(batchSettings, jobFolder):
     ## get path to batch job and python sorting script
     parentDir = path.dirname(path.realpath(__file__))
     batchFile = parentDir + "/batch.sh"
@@ -88,7 +88,9 @@ def sendBatchRequest(batchSettings):
     cmd = "sbatch" # start of command
     for key, value in batchSettings.items(): 
         cmd += ' --' + key + '=' + value # add option flags and values
-    cmd +=" " + batchFile + " " + sortingScript +" " # end of command
+    cmd +=" " + batchFile
+    cmd +=" " + sortingScript #1st input to batch.sh 
+    cmd +=" " + jobFolder #2nd input to batch.sh, and 1st input to sortSingleRec.py
 
     ## Run Batch shell command
     print(cmd)

@@ -13,8 +13,12 @@ import warnings
 import pandas
 
 # Get the task ID
-taskID = int(sys.argv[1])
-print('Task ID:',taskID)
+
+jobfolder = sys.argv[1]
+print('job folder', jobfolder)
+taskID = int(sys.argv[2])
+print('Task ID:', taskID)
+
 
 # Load the data set list
 # f = open('/N/project/lapishLabWorkspace/SpikeInterfaceSpikeSorting/cambridgeRecordings.txt', 'r')
