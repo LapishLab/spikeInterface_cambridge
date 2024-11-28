@@ -41,13 +41,16 @@ probeNames = channelMap.columns.to_list()
 device_channel_indices = np.array(channelMap).astype(int)
 device_channel_indices = device_channel_indices -np.min(device_channel_indices) # TODO check that we are consistent on 0 indexing 
 print('device_channel_indices: ', device_channel_indices)
-# Read the ephys data (stream names are 'Signals AUX', 'Signals CH', 'Signals ADC')
-fullRec = si.read_openephys(recSettings['dataPath'])
 
-# Pull out signal channels (IDs starting with CH)
-isSignalChannel = np.char.find(fullRec.channel_ids, 'CH')==0
-signalChannels = fullRec.channel_ids[isSignalChannel]
-fullRec = fullRec.channel_slice(channel_ids=signalChannels)
+if len(list(pathlib.Path(recSettings['dataPath']).glob("*.continuous"))) > 0: #Load differently if data was recorded by old OE version
+    #Read the ephys data (stream names are 'Signals AUX', 'Signals CH', 'Signals ADC')
+    fullRec = si.read_openephys(recSettings['dataPath'],stream_name='Signals CH')
+else:
+    fullRec = si.read_openephys(recSettings['dataPath'])
+    # Pull out signal channels (IDs starting with CH)
+    isSignalChannel = np.char.find(fullRec.channel_ids, 'CH')==0
+    signalChannels = fullRec.channel_ids[isSignalChannel]
+    fullRec = fullRec.channel_slice(channel_ids=signalChannels)
 print('Signal Recording: ',fullRec)
 
 if fullRec.get_num_segments() > 1:
