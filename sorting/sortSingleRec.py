@@ -1,139 +1,124 @@
-import spikeinterface.full as si
-import probeinterface as pi
-print('Spike Interface Version: ',si.__version__)
-
+from spikeinterface.extractors import read_openephys
+from spikeinterface.preprocessing import bandpass_filter, common_reference, detect_bad_channels
+from spikeinterface.sorters import run_sorter, get_default_sorter_params
+from probeinterface import get_probe
 import numpy as np
-import matplotlib.pyplot as plt
-import csv as csv
-import pathlib
-import shutil
-import sys
-import os
-import warnings
-import pandas
+from pathlib import PurePath
+from shutil import rmtree, move
+from os import listdir
+from warnings import warn
+from pandas import read_csv
+from collections import namedtuple
+from argparse import ArgumentParser
 
-def getRecordingSettings(jobFolder,taskID):
-    ## Load recording files
-    recSettingsFile = jobFolder +'/recordingSettings.csv'
-    recSettings = pandas.read_csv(recSettingsFile)
-    return recSettings.iloc[taskID]
+def main():
+    args = parseInputs()
+    paths = getPaths(args)
+    probeList,probeNames = createProbes(channelMapPath=paths.channelMap)
+    rec = loadRecording(recPath=paths.recording)
+    recList = splitRecByProbe(rec=rec,probeList=probeList)
+    for i, rec in enumerate(recList):
+        rec = preprocess(rec)
+        probeFolder = paths.temporaryOutput + '/' + probeNames[i]
+        runSorter(rec,savePath=probeFolder)
+    saveResults(paths)
 
-# Get the task ID
-jobfolder = sys.argv[1]
-print('job folder', jobfolder)
-taskID = int(sys.argv[2]) - 1 #subtract by 1 for 0 indexing
-print('Task ID:', taskID)
+def parseInputs():
+    parser = ArgumentParser(description='Spike sort a single recording')
+    parser.add_argument('--jobFolder', 
+                    help='Path to job folder which contains recordingSettings.csv and batchSettings.yaml',
+                    required=True
+                    )
+    parser.add_argument('--taskID', 
+                help='Slurm task ID number which will dictate which row is read from recordingSettings.csv',
+                type=int,
+                default='1'
+                )
+    return parser.parse_args()
+def getPaths(args):
+    ## Load recording settings file
+    recCsvFile = args.jobFolder +'/recordingSettings.csv' 
+    recCsv = read_csv(recCsvFile) # load whole rec settings file
+    row = args.taskID - 1 #subtract 1 for Python indexing by 0
+    recSettingsRow = recCsv.iloc[row] # pull row for dataset specified by SLURM task ID
 
-recSettings = getRecordingSettings(jobFolder=jobfolder,taskID=taskID)
+    #Get dataset name from path
+    dataSetName = PurePath(recSettingsRow['dataPath']).name
 
-# Set the open ephys folder path, data set name, channel map, and the location of the spike sorted data for this data set
-dataSetName = pathlib.PurePath(recSettings['dataPath']).name
-spikeSortedDataFolder = jobfolder + '/sorted/' + dataSetName
-spikeSortTempFolder = spikeSortedDataFolder + '_temp'
+    #Save paths to named tuple
+    Paths = namedtuple('Paths',['recording', 'channelMap','temporaryOutput', 'finalOutput'])
+    paths = Paths(
+        recording=recSettingsRow['dataPath'],
+        channelMap= recSettingsRow['channelMap'],
+        temporaryOutput=args.jobFolder + '/sorting/' + dataSetName,
+        finalOutput=args.jobFolder + '/sorted/' + dataSetName
+    )
+    return paths
+def createProbes(channelMapPath):
+    channelMap = read_csv(channelMapPath)
+    probeList = []
+    probeNames = []
+    for probeName, channelInds in channelMap.items():
+        probe = get_probe(manufacturer='cambridgeneurotech',probe_name=probeName)
+        channelInds -= channelInds.min() #Hack to make sure we are 0 indexing
+        probe.set_device_channel_indices(channelInds)
+        probeList.append(probe)
+        probeNames.append(probeName)
 
-print('Processing Data Set:',dataSetName)
-print('Channel Map Name:',recSettings['channelMap'])
+        #pi.plotting.plot_probe(probe)
+    return (probeList, probeNames)
+def loadRecording(recPath):
+    #Load Signal channel data. Have to do this differently depending on which OE version was used to record
+    oldOEFiles = [f for f in listdir(recPath) if f.endswith('.continuous')] #Old OE version has .continuous files directly in recording folder
+    if oldOEFiles: 
+        #Read the ephys data (stream names are 'Signals AUX', 'Signals CH', 'Signals ADC')
+        rec = read_openephys(recPath,stream_name='Signals CH')
+    else:
+        rec = read_openephys(recPath)
+        # Pull out signal channels (IDs starting with CH)
+        isSignalChannel = np.char.find(rec.channel_ids, 'CH')==0
+        signalChannels = rec.channel_ids[isSignalChannel]
+        rec = rec.channel_slice(channel_ids=signalChannels)
+    print('Signal Recording: ',rec)
 
-channelMap = pandas.read_csv(jobfolder+'/'+recSettings['channelMap'])
-
-probeNames = channelMap.columns.to_list()
-
-device_channel_indices = np.array(channelMap).astype(int)
-device_channel_indices = device_channel_indices -np.min(device_channel_indices) # TODO check that we are consistent on 0 indexing 
-print('device_channel_indices: ', device_channel_indices)
-
-if len(list(pathlib.Path(recSettings['dataPath']).glob("*.continuous"))) > 0: #Load differently if data was recorded by old OE version
-    #Read the ephys data (stream names are 'Signals AUX', 'Signals CH', 'Signals ADC')
-    fullRec = si.read_openephys(recSettings['dataPath'],stream_name='Signals CH')
-else:
-    fullRec = si.read_openephys(recSettings['dataPath'])
-    # Pull out signal channels (IDs starting with CH)
-    isSignalChannel = np.char.find(fullRec.channel_ids, 'CH')==0
-    signalChannels = fullRec.channel_ids[isSignalChannel]
-    fullRec = fullRec.channel_slice(channel_ids=signalChannels)
-print('Signal Recording: ',fullRec)
-
-if fullRec.get_num_segments() > 1:
-    segmentDuration = [fullRec.get_duration(i) for i in range(fullRec.get_num_segments())]
-    warnings.warn('Raw data contains multiple segments with the following time durations (s):'
-                  + '\n' + str(segmentDuration)
-                  + '\n I will just spike sort the longest segment')
-    fullRec = fullRec.select_segments(int(np.argmax(segmentDuration)))
-    
-for i in range(len(probeNames)):
-    ### Create Probe according to Channel map ###
-    probe = pi.get_probe(manufacturer='cambridgeneurotech', probe_name=probeNames[i])
-    probe.set_device_channel_indices(device_channel_indices[:,i])
-    #print(probe)
-    #pi.plotting.plot_probe(probe)
-    
-    ### Pull out recording channels for this probe ###
-    first = i*len(device_channel_indices)
-    last = first+len(device_channel_indices)
-    amp_ids = fullRec.get_channel_ids()
-    rec = fullRec.channel_slice(amp_ids[first:last])
-    #print(rec.get_channel_ids())
-    
-    ### Apply probe to subset of recording ###
-    rec = rec.set_probe(probe, group_mode="by_shank")
-    
-    # Show location of each recording channel in space
-    l = rec.get_channel_locations()
-    plt.scatter(l[:,0], l[:,1])
-
-    ### Preprocess data ###
-    rec = si.bandpass_filter(recording=rec,freq_min=300.,freq_max=3000.)
-    
-    # Show the noise histogram
-    noise = si.get_noise_levels(rec, return_scaled=True)
-    fig, ax = plt.subplots()
-    _ = ax.hist(noise, bins=np.arange(5, 30, 2.5))
-    ax.set_xlabel('noise  [microV]')
-
-    # Identify bad channels and remove them
-    bad_channel_ids, channel_labels = si.detect_bad_channels(rec,method="std",std_mad_threshold=3)
+    # Check if recording has multiple segments
+    if rec.get_num_segments() > 1:
+        segmentDuration = [rec.get_duration(i) for i in range(rec.get_num_segments())]
+        warn('Raw data contains multiple segments with the following time durations (s):'
+            + '\n' + str(segmentDuration)
+            + '\n I will just spike sort the longest segment')
+        rec = rec.select_segments(int(np.argmax(segmentDuration)))
+    return rec
+def splitRecByProbe(rec,probeList):
+    recChannels = rec.get_channel_ids()
+    recList = []
+    firstIndex=0
+    for probe in probeList:
+        lastIndex=firstIndex + len(probe.contact_ids)
+        subRec = rec.channel_slice(recChannels[firstIndex:lastIndex])
+        subRec = subRec.set_probe(probe, group_mode="by_shank")
+        recList.append(subRec)
+        firstIndex = lastIndex
+    return recList
+def preprocess(rec):
+    rec = bandpass_filter(recording=rec,freq_min=300.,freq_max=3000.)
+    bad_channel_ids, _ = detect_bad_channels(rec,method="std",std_mad_threshold=3)
     rec = rec.remove_channels(bad_channel_ids)
-    print('bad_channel_ids: ', bad_channel_ids)
+    rec = common_reference(rec, operator="median", reference="global")
+    return rec
+def runSorter(rec,savePath):
+    KS3Params = get_default_sorter_params('kilosort3')
+    run_sorter('kilosort3',
+        rec,
+        output_folder= savePath,
+        singularity_image="spikeinterface/kilosort3-compiled-base:latest",
+        verbose=True,
+        delete_container_files=False,
+        **KS3Params)
+def saveResults(paths):
+    rmtree(paths.finalOutput, ignore_errors=True) # delete old version of this folder if present
+    move(paths.temporaryOutput, paths.finalOutput) # move folder to final destination
+    print('Spike Sorted Data:',paths.finalOutput)
 
-    # Common median reference the data
-    rec = si.common_reference(rec, operator="median", reference="global")
-    #print('rec',rec)
-    
-    ### Spike sort ###
-    KS3Params = si.get_default_sorter_params('kilosort3')
-    #KS3Params['do_correction'] = False # Turn off drift correction
-    #KS3Params['NT'] = 512000 # Increase the NT parameter to avoid EIG did not converge errors
-    print('KS3Params:',KS3Params)
-    
-    #export SPIKEINTERFACE_DEV_PATH="~/.conda/envs/si_env/lib/python3.9/site-packages/spikeinterface"
-    
-    tempSubFolder = os.path.join(spikeSortTempFolder, probeNames[i])
-    sorting = si.run_sorter('kilosort3',
-                rec,
-                output_folder= tempSubFolder,
-                singularity_image="spikeinterface/kilosort3-compiled-base:latest",
-                verbose=True,
-                delete_container_files=False,
-                **KS3Params)
-    
-    ### Extract waveforms and compute quality metrics ###
-    try:
-        print('calculating  metrics')
-        waveformFolder = os.path.join(tempSubFolder, 'waveforms')
-        we = si.extract_waveforms(
-            sorting=sorting,
-            recording=rec, 
-            folder=waveformFolder,
-            overwrite=True)
-        metrics = si.compute_quality_metrics(we)
-        metricsFileName = os.path.join(tempSubFolder,'sorter_output','qualityMetrics.csv')
-        metrics.to_csv(metricsFileName)
-    except:
-        warnings.warn('Computing quality metrics failed')
-
-
-shutil.rmtree(spikeSortedDataFolder, ignore_errors=True) # delete old version of this folder if present
-os.rename(spikeSortTempFolder, spikeSortedDataFolder) # rename folder to final version
-
-# Tell user where the data are located
-print('Spike Sorted Data:',spikeSortedDataFolder)
+if __name__ == "__main__":
+    main()

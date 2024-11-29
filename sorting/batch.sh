@@ -13,4 +13,4 @@ module load apptainer/1.1.8
 conda activate si_env
 
 #Run the specified script in parallel passing a SLURM array number each time
-srun python $1 $2 $SLURM_ARRAY_TASK_ID
+srun python $1 --jobFolder $2 --taskID $SLURM_ARRAY_TASK_ID

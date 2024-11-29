@@ -74,9 +74,8 @@ def getRecordingSettings(jobFolder):
         
     ## Check that channel map exists in job folder
     for m in recSettings['channelMap']:
-        mapPath = jobFolder+'/'+m
-        if not path.isfile(mapPath):
-            raise Exception("no channel map found at: \n" + mapPath)
+        if not path.isfile(m):
+            raise Exception("no channel map found at: \n" + m)
     return recSettings
 def sendBatchRequest(batchSettings, jobFolder):
     ## get path to batch job and python sorting script
