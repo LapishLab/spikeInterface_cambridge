@@ -50,7 +50,7 @@ def getPaths(args):
     paths = Paths(
         recording=recSettingsRow['dataPath'],
         channelMap= recSettingsRow['channelMap'],
-        temporaryOutput=args.jobFolder + '/sorting/' + dataSetName,
+        temporaryOutput=args.jobFolder + '/sorted/unfinished_' + dataSetName,
         finalOutput=args.jobFolder + '/sorted/' + dataSetName
     )
     return paths
