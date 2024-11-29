@@ -5,7 +5,7 @@
 
 #Load modules
 module load miniconda
-module load singularity/3.8.3
+#module load singularity/3.8.3
 module load cudatoolkit/11.7
 module load apptainer/1.1.8
 
