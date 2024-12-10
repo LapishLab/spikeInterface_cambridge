@@ -1,3 +1,4 @@
 *.sif
 logs/*
 *.asv
+*.vscode
