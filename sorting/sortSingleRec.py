@@ -1,3 +1,4 @@
+from datetime import datetime
 from spikeinterface.extractors import read_openephys
 from spikeinterface.preprocessing import bandpass_filter, common_reference, detect_bad_channels
 from spikeinterface.sorters import run_sorter, get_default_sorter_params
@@ -51,7 +52,7 @@ def getPaths(args):
         recording=recSettingsRow['dataPath'],
         channelMap= recSettingsRow['channelMap'],
         temporaryOutput=args.jobFolder + '/sorted/unfinished_' + dataSetName,
-        finalOutput=args.jobFolder + '/sorted/' + dataSetName
+        finalOutput=args.jobFolder + '/sorted/' + dataSetName + 'sorted_' + datetime.today().strftime('%Y-%m-%d_%H:%M:%S')
     )
     return paths
 def createProbes(channelMapPath):
