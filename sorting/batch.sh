@@ -5,9 +5,8 @@
 
 #Load modules
 module load miniconda
-#module load singularity/3.8.3
-module load cudatoolkit/11.7
-module load apptainer/1.1.8
+module load cudatoolkit
+module load apptainer
 
 #Start conda environment
 conda activate si_env
