@@ -5,8 +5,8 @@ from spikeinterface.sorters import run_sorter, get_default_sorter_params
 from probeinterface import get_probe
 import numpy as np
 from pathlib import PurePath
-from shutil import rmtree, move
-from os import listdir
+from shutil import rmtree, move, copy2
+from os import listdir, mkdir, path
 from warnings import warn
 from pandas import read_csv
 from collections import namedtuple
@@ -20,9 +20,9 @@ def main():
     recList = splitRecByProbe(rec=rec,probeList=probeList)
     for i, rec in enumerate(recList):
         rec = preprocess(rec)
-        probeFolder = paths.temporaryOutput + '/' + probeNames[i]
-        runSorter(rec,savePath=probeFolder)
-    saveResults(paths)
+        probeFolder = path.join(paths.temporaryOutput, probeNames[i])
+        #runSorter(rec,savePath=probeFolder)
+    saveResults(paths=paths, args=args)
 
 def parseInputs():
     parser = ArgumentParser(description='Spike sort a single recording')
@@ -38,7 +38,7 @@ def parseInputs():
     return parser.parse_args()
 def getPaths(args):
     ## Load recording settings file
-    recCsvFile = args.jobFolder +'/recordingSettings.csv' 
+    recCsvFile = path.join(args.jobFolder, 'recordingSettings.csv') 
     recCsv = read_csv(recCsvFile) # load whole rec settings file
     row = args.taskID - 1 #subtract 1 for Python indexing by 0
     recSettingsRow = recCsv.iloc[row] # pull row for dataset specified by SLURM task ID
@@ -47,12 +47,13 @@ def getPaths(args):
     dataSetName = PurePath(recSettingsRow['dataPath']).name
 
     #Save paths to named tuple
-    Paths = namedtuple('Paths',['recording', 'channelMap','temporaryOutput', 'finalOutput'])
+    Paths = namedtuple('Paths',['recording','channelMap','recordingSettings','temporaryOutput','finalOutput'])
     paths = Paths(
         recording=recSettingsRow['dataPath'],
         channelMap= recSettingsRow['channelMap'],
-        temporaryOutput=args.jobFolder + '/sorted/unfinished_' + dataSetName,
-        finalOutput=args.jobFolder + '/sorted/' + dataSetName + 'sorted_' + datetime.today().strftime('%Y-%m-%d_%H:%M:%S')
+        temporaryOutput=path.join(args.jobFolder, 'sorted', 'unfinished_' + dataSetName),
+        finalOutput=path.join(args.jobFolder, 'sorted', dataSetName + '_sorted_' + datetime.today().strftime('%Y-%m-%d_%H:%M:%S')),
+        recordingSettings=recCsvFile
     )
     return paths
 def createProbes(channelMapPath):
@@ -116,9 +117,43 @@ def runSorter(rec,savePath):
         verbose=True,
         delete_container_files=False,
         **KS3Params)
-def saveResults(paths):
+def saveResults(paths, args):
     rmtree(paths.finalOutput, ignore_errors=True) # delete old version of this folder if present
     move(paths.temporaryOutput, paths.finalOutput) # move folder to final destination
+
+    # Make a folder for metadata
+    metaDataFolder =  path.join(paths.finalOutput, 'jobMetaData')
+    mkdir(metaDataFolder)
+
+    # Make a matadata text file
+    metaDataLog = path.join(metaDataFolder, 'jobMetaData.txt')
+    file = open(metaDataLog, 'w')
+    
+    # Write Paths
+    file.write('-- Paths -- \n')
+    for field in paths._fields:
+        value=getattr(paths, field)
+        file.write(field + ' : ' + value)
+
+    # write Input Arguments
+    file.write('-- Input arguments -- \n')
+    for field, value in vars(args).items():
+        file.write(field + ' : ' + str(value))
+
+    file.close()
+
+    # copy settings files
+    copy2(paths.channelMap, metaDataFolder)
+    copy2(paths.recordingSettings, metaDataFolder)
+
+    # copy log file 
+    logsFolder = path.join(args.jobFolder, 'logs')
+    for filename in listdir(logsFolder):
+        if filename.startswith(str(args.taskID) + '_'):
+            src = path.join(logsFolder, filename)
+            dst = path.join(metaDataFolder, filename)
+            copy2(src, dst)
+
     print('Spike Sorted Data:',paths.finalOutput)
 
 if __name__ == "__main__":
