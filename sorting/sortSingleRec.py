@@ -149,6 +149,8 @@ def saveResults(paths, args):
     # copy settings files
     copy2(paths.channelMap, metaDataFolder)
     copy2(paths.recordingSettings, metaDataFolder)
+    batchSettings = path.join(args.jobFolder, 'batchSettings.yaml')
+    copy2(batchSettings, metaDataFolder)
 
     # copy log file 
     logsFolder = path.join(args.jobFolder, 'logs')
