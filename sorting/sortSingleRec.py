@@ -6,7 +6,7 @@ from probeinterface import get_probe
 import numpy as np
 from pathlib import PurePath
 from shutil import rmtree, move, copy2
-from os import listdir, mkdir, path
+from os import listdir, makedirs, path
 from warnings import warn
 from pandas import read_csv
 from collections import namedtuple
@@ -18,10 +18,15 @@ def main():
     probeList,probeNames = createProbes(channelMapPath=paths.channelMap)
     rec = loadRecording(recPath=paths.recording)
     recList = splitRecByProbe(rec=rec,probeList=probeList)
+    makedirs(paths.temporaryOutput)
     for i, rec in enumerate(recList):
-        rec = preprocess(rec)
-        subPath = path.join(paths.temporaryOutput, probeNames[i])
-        runSorter(rec,savePath=subPath)
+        try:
+            rec = preprocess(rec)
+            subPath = path.join(paths.temporaryOutput, probeNames[i])
+            runSorter(rec,savePath=subPath)
+        except:
+            warn('    sorting failed for ', probeNames[i])
+            paths.finalOutput = paths.failedOutput
     saveResults(paths=paths, args=args)
 
 def parseInputs():
@@ -49,15 +54,17 @@ def getPaths(args):
 
     finalOutputFolder = f'{args.taskID}_rec-{dataSetName}_sort-{now}'
     tempOutputFolder = f'processing_{finalOutputFolder}'
+    failedOutputFolder = f'failed_{finalOutputFolder}'
     resultsPath = path.join(args.jobFolder,'results')
 
     #Save paths to named tuple
-    Paths = namedtuple('Paths',['recording','channelMap','recordingSettings','temporaryOutput','finalOutput'])
+    Paths = namedtuple('Paths',['recording','channelMap','recordingSettings','temporaryOutput','finalOutput','failedOutput'])
     paths = Paths(
         recording=recPath,
         channelMap=recSettingsRow['channelMap'],
         temporaryOutput=path.join(resultsPath,tempOutputFolder),
         finalOutput=path.join(resultsPath,finalOutputFolder),
+        failedOutput=path.join(resultsPath,failedOutputFolder),
         recordingSettings=recCsvPath
     )
     return paths
@@ -127,7 +134,7 @@ def saveResults(paths, args):
 
     # Make a folder for metadata
     metaDataFolder =  path.join(paths.finalOutput, 'jobMetaData')
-    mkdir(metaDataFolder)
+    makedirs(metaDataFolder)
 
     # Make a matadata text file
     metaDataLog = path.join(metaDataFolder, 'jobMetaData.txt')
