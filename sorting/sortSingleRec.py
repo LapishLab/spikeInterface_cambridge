@@ -20,8 +20,8 @@ def main():
     recList = splitRecByProbe(rec=rec,probeList=probeList)
     for i, rec in enumerate(recList):
         rec = preprocess(rec)
-        probeFolder = path.join(paths.temporaryOutput, probeNames[i])
-        runSorter(rec,savePath=probeFolder)
+        subPath = path.join(paths.temporaryOutput, probeNames[i])
+        runSorter(rec,savePath=subPath)
     saveResults(paths=paths, args=args)
 
 def parseInputs():
@@ -38,22 +38,27 @@ def parseInputs():
     return parser.parse_args()
 def getPaths(args):
     ## Load recording settings file
-    recCsvFile = path.join(args.jobFolder, 'recordingSettings.csv') 
-    recCsv = read_csv(recCsvFile) # load whole rec settings file
+    recCsvPath = path.join(args.jobFolder, 'recordingSettings.csv') 
+    recCsv = read_csv(recCsvPath) # load whole rec settings file
     row = args.taskID - 1 #subtract 1 for Python indexing by 0
     recSettingsRow = recCsv.iloc[row] # pull row for dataset specified by SLURM task ID
+    recPath = recSettingsRow['dataPath']
+    dataSetName = PurePath(recPath).name
 
-    #Get dataset name from path
-    dataSetName = PurePath(recSettingsRow['dataPath']).name
+    now = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
+
+    finalOutputFolder = f'{args.taskID}_rec-{dataSetName}_sort-{now}'
+    tempOutputFolder = f'processing_{finalOutputFolder}'
+    resultsPath = path.join(args.jobFolder,'results')
 
     #Save paths to named tuple
     Paths = namedtuple('Paths',['recording','channelMap','recordingSettings','temporaryOutput','finalOutput'])
     paths = Paths(
-        recording=recSettingsRow['dataPath'],
-        channelMap= recSettingsRow['channelMap'],
-        temporaryOutput=path.join(args.jobFolder, 'sorted', 'unfinished_' + dataSetName),
-        finalOutput=path.join(args.jobFolder, 'sorted', dataSetName + '_sorted_' + datetime.today().strftime('%Y-%m-%d_%H:%M:%S')),
-        recordingSettings=recCsvFile
+        recording=recPath,
+        channelMap=recSettingsRow['channelMap'],
+        temporaryOutput=path.join(resultsPath,tempOutputFolder),
+        finalOutput=path.join(resultsPath,finalOutputFolder),
+        recordingSettings=recCsvPath
     )
     return paths
 def createProbes(channelMapPath):
