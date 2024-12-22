@@ -21,7 +21,7 @@ def main():
     for i, rec in enumerate(recList):
         rec = preprocess(rec)
         probeFolder = path.join(paths.temporaryOutput, probeNames[i])
-        #runSorter(rec,savePath=probeFolder)
+        runSorter(rec,savePath=probeFolder)
     saveResults(paths=paths, args=args)
 
 def parseInputs():
