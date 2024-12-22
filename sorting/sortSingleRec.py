@@ -13,6 +13,7 @@ from collections import namedtuple
 from argparse import ArgumentParser
 
 def main():
+    print('running sortSingleRec.py')
     args = parseInputs()
     paths = getPaths(args)
     probeList,probeNames = createProbes(channelMapPath=paths.channelMap)
@@ -73,6 +74,7 @@ def createProbes(channelMapPath):
     probeList = []
     probeNames = []
     for probeName, channelInds in channelMap.items():
+        print(f'    creating probe {probeName}')
         probe = get_probe(manufacturer='cambridgeneurotech',probe_name=probeName)
         channelInds -= channelInds.min() #Hack to make sure we are 0 indexing
         probe.set_device_channel_indices(channelInds)
@@ -115,6 +117,7 @@ def splitRecByProbe(rec,probeList):
         firstIndex = lastIndex
     return recList
 def preprocess(rec):
+    print('    preprocessing: ', rec)
     rec = bandpass_filter(recording=rec,freq_min=300.,freq_max=3000.)
     bad_channel_ids, _ = detect_bad_channels(rec,method="std",std_mad_threshold=3)
     rec = rec.remove_channels(bad_channel_ids)
@@ -122,6 +125,7 @@ def preprocess(rec):
     return rec
 def runSorter(rec,savePath):
     KS3Params = get_default_sorter_params('kilosort3')
+    print('    sorting: ', rec)
     run_sorter('kilosort3',
         rec,
         output_folder= savePath,
