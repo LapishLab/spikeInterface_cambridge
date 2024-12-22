@@ -123,7 +123,6 @@ def runSorter(rec,savePath):
         delete_container_files=False,
         **KS3Params)
 def saveResults(paths, args):
-    rmtree(paths.finalOutput, ignore_errors=True) # delete old version of this folder if present
     move(paths.temporaryOutput, paths.finalOutput) # move folder to final destination
 
     # Make a folder for metadata
