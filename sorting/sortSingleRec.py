@@ -127,7 +127,7 @@ def runSorter(rec,savePath):
         output_folder= savePath,
         singularity_image="spikeinterface/kilosort3-compiled-base:latest",
         verbose=True,
-        delete_container_files=False,
+        delete_container_files=True,
         **KS3Params)
 def saveResults(paths, args):
     move(paths.temporaryOutput, paths.finalOutput) # move folder to final destination
