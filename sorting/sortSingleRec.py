@@ -137,12 +137,12 @@ def saveResults(paths, args):
     file.write('-- Paths -- \n')
     for field in paths._fields:
         value=getattr(paths, field)
-        file.write(f'{field} : {value}')
+        file.write(f'{field} : {value}\n')
 
     # write Input Arguments
     file.write('-- Input arguments -- \n')
     for field, value in vars(args).items():
-        file.write(f'{field} : {value}')
+        file.write(f'{field} : {value}\n')
 
     file.close()
 
