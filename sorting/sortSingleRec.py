@@ -138,12 +138,12 @@ def saveResults(paths, args):
     file.write('-- Paths -- \n')
     for field in paths._fields:
         value=getattr(paths, field)
-        file.write(field + ' : ' + value)
+        file.write(f'{field} : {value}')
 
     # write Input Arguments
     file.write('-- Input arguments -- \n')
     for field, value in vars(args).items():
-        file.write(field + ' : ' + str(value))
+        file.write(f'{field} : {value}')
 
     file.close()
 
@@ -154,7 +154,7 @@ def saveResults(paths, args):
     # copy log file 
     logsFolder = path.join(args.jobFolder, 'logs')
     for filename in listdir(logsFolder):
-        if filename.startswith(str(args.taskID) + '_'):
+        if filename.startswith(f'{args.taskID}_'):
             src = path.join(logsFolder, filename)
             dst = path.join(metaDataFolder, filename)
             copy2(src, dst)
