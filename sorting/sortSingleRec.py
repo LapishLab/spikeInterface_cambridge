@@ -6,13 +6,14 @@ from probeinterface import get_probe
 import numpy as np
 from pathlib import PurePath
 from shutil import rmtree, move, copy2
-from os import listdir, makedirs, path
+from os import listdir, makedirs, path, chdir
 from warnings import warn
 from pandas import read_csv
 from collections import namedtuple
 from argparse import ArgumentParser
 
 def main():
+    chdir(path.dirname(path.abspath(__file__))) # Change the current working directory to this script folder
     print('running sortSingleRec.py')
     args = parseInputs()
     paths = getPaths(args)
