@@ -129,7 +129,7 @@ def runSorter(rec,savePath):
     run_sorter('kilosort3',
         rec,
         output_folder= savePath,
-        singularity_image="spikeinterface/kilosort3-compiled-base:latest",
+        singularity_image="spikeinterface/kilosort3-compiled-base:0.2.0",
         verbose=True,
         delete_container_files=True,
         **KS3Params)
