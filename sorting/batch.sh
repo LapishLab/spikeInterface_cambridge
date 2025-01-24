@@ -9,7 +9,7 @@ module load cudatoolkit
 module load apptainer
 
 #Start conda environment
-conda activate si_env
+conda activate spikeInterface
 
 #Run the specified script in parallel passing a SLURM array number each time
 srun python -u $1 --jobFolder $2 --taskID $SLURM_ARRAY_TASK_ID
