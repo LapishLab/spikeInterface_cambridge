@@ -127,9 +127,10 @@ def preprocess(rec):
 def runSorter(rec,savePath):
     KS3Params = get_default_sorter_params('kilosort3')
     print('    sorting: ', rec)
-    run_sorter('kilosort3',
-        rec,
-        output_folder= savePath,
+    run_sorter(
+        sorter_name='kilosort3',
+        recording=rec,
+        folder=savePath,
         singularity_image="spikeinterface/kilosort3-compiled-base:0.2.0",
         verbose=True,
         delete_container_files=True,
