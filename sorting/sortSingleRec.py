@@ -125,16 +125,14 @@ def preprocess(rec):
     rec = common_reference(rec, operator="median", reference="global")
     return rec
 def runSorter(rec,savePath):
-    KS3Params = get_default_sorter_params('kilosort3')
+    sorterParameters = get_default_sorter_params('kilosort4')
     print('    sorting: ', rec)
     run_sorter(
-        sorter_name='kilosort3',
+        sorter_name='kilosort4',
         recording=rec,
         folder=savePath,
-        singularity_image="spikeinterface/kilosort3-compiled-base:0.2.0",
         verbose=True,
-        delete_container_files=True,
-        **KS3Params)
+        **sorterParameters)
 def saveResults(paths, args):
     move(paths.temporaryOutput, paths.finalOutput) # move folder to final destination
 
