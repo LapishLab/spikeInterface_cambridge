@@ -14,22 +14,30 @@ from argparse import ArgumentParser
 from subprocess import check_output
 from pprint import pp
 from git import Repo
+import pickle
+
 def main():
     print('running sortSingleRec.py')
     options = parseInputs()
     logInfo(options)
-    probes = createProbes(channelMapPath=options['paths']['channelMap'])
     fullRec = loadRecording(recPath=options['paths']['rawData'])
+    probes = createProbes(channelMapPath=options['paths']['channelMap'])
     recList = splitRecByProbe(rec=fullRec,probes=probes)
-    
+    for d in recList:
+        d['rec'] = preprocess(rec=d['rec'])
+    saveToFile(data=recList, fname=path.join(options['paths']['processing'], 'recList.pkl'))
     for d in recList:
         try:
-            d['rec'] = preprocess(d['rec'])
             savePath = path.join(options['paths']['processing'], d['probeName'])
             runSorter(rec=d['rec'], savePath=savePath)
         except:
             warn('    sorting failed for ', d['probeName'])
     saveResults(options)
+
+def saveToFile(data, fname):
+    makedirs(path.dirname(fname), exist_ok=True) #make sure directory exists
+    with open(fname, 'wb') as f:
+        pickle.dump(data, f)
 
 def logInfo(options):
     from spikeinterface import __version__ as si_version
