@@ -163,7 +163,7 @@ def saveResults(options):
 
     # copy settings and log files
     copy2(options['paths']['channelMap'], metaDataFolder)
-    copy2(options['paths']['recordingSettings'], metaDataFolder)
+    copy2(options['paths']['recCsv'], metaDataFolder)
     copy2(options['paths']['batch'] , metaDataFolder)
     
     try: 
