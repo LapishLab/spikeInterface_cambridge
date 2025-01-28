@@ -156,23 +156,24 @@ def runSorter(rec,savePath):
         remove_existing_folder=True,
         **sorterParameters)
 def saveResults(options):
-
+    # move folder to final destination
+    move(options['paths']['processing'], options['paths']['results']) 
+    
     # Make a folder for metadata
-    metaDataFolder =  path.join(options['paths']['processing'], 'jobMetaData')
+    metaDataFolder =  path.join(options['paths']['results'], 'jobMetaData')
     makedirs(metaDataFolder, exist_ok=True)
 
     # copy settings and log files
     copy2(options['paths']['channelMap'], metaDataFolder)
     copy2(options['paths']['recCsv'], metaDataFolder)
     copy2(options['paths']['batch'] , metaDataFolder)
+    print('Job completed successfully')
     
+    # Copy log file to final destination if it exists (no log file if running in debug mode)
     try: 
         copy2(options['paths']['log'], metaDataFolder)
     except:
         print('No log file found')
-
-    move(options['paths']['processing'], options['paths']['results']) # move folder to final destination
-    print('Spike Sorted Data:',options['paths']['results'])
 
 if __name__ == "__main__":
     main()
