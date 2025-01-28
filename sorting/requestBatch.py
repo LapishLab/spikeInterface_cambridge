@@ -49,7 +49,7 @@ def getBatchSettings(jobFolder, recSettings):
     if batchSettings['job-name'] is None:
         batchSettings['job-name'] = path.split(jobFolder)[1]
     if batchSettings['output'] is None:
-        batchSettings['output'] = jobFolder+'/logs/%a_%j.txt'
+        batchSettings['output'] = jobFolder+'/logs/%a_%A.txt'
     return batchSettings
 def calcMaxRec(recPaths):
     maxRec = 0
