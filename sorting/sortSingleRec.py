@@ -25,11 +25,13 @@ def main():
     recList = splitRecByProbe(rec=fullRec,probes=probes)
     for d in recList:
         d['rec'] = preprocess(rec=d['rec'])
+    for d in recList:
+        d['processingPath'] = path.join(options['paths']['processing'], d['probeName'])
+        d['finalPath'] = path.join(options['paths']['results'], d['probeName'])
     saveToFile(data=recList, fname=path.join(options['paths']['processing'], 'recList.pkl'))
     for d in recList:
         try:
-            savePath = path.join(options['paths']['processing'], d['probeName'])
-            runSorter(rec=d['rec'], savePath=savePath)
+            runSorter(rec=d['rec'], savePath=d['processingPath'])
         except:
             warn('    sorting failed for ', d['probeName'])
     saveResults(options)
