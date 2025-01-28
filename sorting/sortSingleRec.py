@@ -6,84 +6,106 @@ from probeinterface import get_probe
 import numpy as np
 from pathlib import PurePath
 from shutil import rmtree, move, copy2
-from os import listdir, makedirs, path, chdir
+from os import listdir, makedirs, path, chdir, environ
 from warnings import warn
 from pandas import read_csv
 from collections import namedtuple
 from argparse import ArgumentParser
-
+from subprocess import check_output
+from pprint import pp
+from git import Repo
 def main():
-    chdir(path.dirname(path.abspath(__file__))) # Change the current working directory to this script folder
     print('running sortSingleRec.py')
-    args = parseInputs()
-    paths = getPaths(args)
-    probeList,probeNames = createProbes(channelMapPath=paths.channelMap)
-    rec = loadRecording(recPath=paths.recording)
-    recList = splitRecByProbe(rec=rec,probeList=probeList)
-    makedirs(paths.temporaryOutput)
-    for i, rec in enumerate(recList):
+    options = parseInputs()
+    logInfo(options)
+    probes = createProbes(channelMapPath=options['paths']['channelMap'])
+    fullRec = loadRecording(recPath=options['paths']['rawData'])
+    recList = splitRecByProbe(rec=fullRec,probes=probes)
+    
+    for d in recList:
         try:
-            rec = preprocess(rec)
-            subPath = path.join(paths.temporaryOutput, probeNames[i])
-            runSorter(rec,savePath=subPath)
+            d['rec'] = preprocess(d['rec'])
+            savePath = path.join(options['paths']['processing'], d['probeName'])
+            runSorter(rec=d['rec'], savePath=savePath)
         except:
-            warn('    sorting failed for ', probeNames[i])
-            paths.finalOutput = paths.failedOutput
-    saveResults(paths=paths, args=args)
+            warn('    sorting failed for ', d['probeName'])
+    saveResults(options)
+
+def logInfo(options):
+    from spikeinterface import __version__ as si_version
+    print('SpikeInterface version =', si_version)
+    print('-- Options and paths --')
+    pp(options)
+    
+    scriptPath = path.dirname(path.abspath(__file__))
+    repo = Repo(scriptPath, search_parent_directories=True)
+    sha = repo.head.object.hexsha
+    print('Git Commit = ', sha)
 
 def parseInputs():
     parser = ArgumentParser(description='Spike sort a single recording')
     parser.add_argument('--jobFolder', 
-                    help='Path to job folder which contains recordingSettings.csv and batchSettings.yaml',
-                    required=True
-                    )
-    parser.add_argument('--taskID', 
-                help='Slurm task ID number which will dictate which row is read from recordingSettings.csv',
-                type=int,
-                default='1'
-                )
-    return parser.parse_args()
-def getPaths(args):
+                        help='Path to job folder which contains recordingSettings.csv and batchSettings.yaml',
+                        required=True
+                        )
+    parser.add_argument('--debugWithoutSlurm',
+                        help='Enable for debugging without submitting to Slurm',
+                        required=False,
+                        )
+    args = parser.parse_args()
+    options = vars(args) # Convert to dictionary so additional settings can be added
+
+    if options['debugWithoutSlurm']:
+        options['taskID'] = '1'
+        options['jobID'] = None
+    else:
+        options['taskID'] = environ['SLURM_ARRAY_TASK_ID']
+        options['jobID'] = environ['SLURM_ARRAY_JOB_ID']
+
+    
+    options['paths'] = getPaths(options)
+    return options
+def getPaths(options):
+    paths = dict() # Save paths in dictionary
+
+    paths['batch']  = path.join(options['jobFolder'], 'batchSettings.yaml')
     ## Load recording settings file
-    recCsvPath = path.join(args.jobFolder, 'recordingSettings.csv') 
-    recCsv = read_csv(recCsvPath) # load whole rec settings file
-    row = args.taskID - 1 #subtract 1 for Python indexing by 0
-    recSettingsRow = recCsv.iloc[row] # pull row for dataset specified by SLURM task ID
-    recPath = recSettingsRow['dataPath']
-    dataSetName = PurePath(recPath).name
-
+    paths['recCsv'] = path.join(options['jobFolder'], 'recordingSettings.csv') 
+    
+    recCsv = read_csv(paths['recCsv']) # load whole rec settings file
+    ind = int(options['taskID']) - 1 #subtract 1 for Python indexing by 0
+ 
+    paths['rawData'] = recCsv.iloc[ind]['dataPath']
+    paths['channelMap'] = recCsv.iloc[ind]['channelMap']
+    
+    ## Setup output folders
+    dataSetName = PurePath( paths['rawData']).name
     now = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
+    baseName = f'{options['taskID']}_rec-{dataSetName}_sort-{now}'
 
-    finalOutputFolder = f'{args.taskID}_rec-{dataSetName}_sort-{now}'
-    tempOutputFolder = f'processing_{finalOutputFolder}'
-    failedOutputFolder = f'failed_{finalOutputFolder}'
-    resultsPath = path.join(args.jobFolder,'results')
+    paths['processing'] = path.join(options['jobFolder'], 'processing', baseName)
+    paths['results'] = path.join(options['jobFolder'], 'results', baseName)
 
-    #Save paths to named tuple
-    Paths = namedtuple('Paths',['recording','channelMap','recordingSettings','temporaryOutput','finalOutput','failedOutput'])
-    paths = Paths(
-        recording=recPath,
-        channelMap=recSettingsRow['channelMap'],
-        temporaryOutput=path.join(resultsPath,tempOutputFolder),
-        finalOutput=path.join(resultsPath,finalOutputFolder),
-        failedOutput=path.join(resultsPath,failedOutputFolder),
-        recordingSettings=recCsvPath
-    )
+    ## Specify the expected location of the Slurm log file
+    if options['debugWithoutSlurm']:
+        paths['log'] = None
+    else:
+        logBasename = f'{options['taskID']}_{options['jobID']}.txt' 
+        paths['log'] = path.join(options['jobFolder'], 'logs', logBasename)
     return paths
 def createProbes(channelMapPath):
     channelMap = read_csv(channelMapPath)
-    probeList = []
-    probeNames = []
+    probes = [] #list of dictionaries
     for probeName, channelInds in channelMap.items():
         print(f'    creating probe {probeName}')
-        probe = get_probe(manufacturer='cambridgeneurotech',probe_name=probeName)
+        d = dict()
+        d['probeName'] = probeName
+        d['probe'] = get_probe(manufacturer='cambridgeneurotech',probe_name=probeName)
         channelInds -= channelInds.min() #Hack to make sure we are 0 indexing
-        probe.set_device_channel_indices(channelInds)
-        probeList.append(probe)
-        probeNames.append(probeName)
-
-        #pi.plotting.plot_probe(probe)
-    return (probeList, probeNames)
+        d['probe'].set_device_channel_indices(channelInds)
+        probes.append(d)
+        #pi.plotting.plot_probe(d['probe'])
+    return probes
 def loadRecording(recPath):
     #Load Signal channel data. Have to do this differently depending on which OE version was used to record
     oldOEFiles = [f for f in listdir(recPath) if f.endswith('.continuous')] #Old OE version has .continuous files directly in recording folder
@@ -106,17 +128,15 @@ def loadRecording(recPath):
             + '\n I will just spike sort the longest segment')
         rec = rec.select_segments(int(np.argmax(segmentDuration)))
     return rec
-def splitRecByProbe(rec,probeList):
+def splitRecByProbe(rec,probes):
     recChannels = rec.get_channel_ids()
-    recList = []
     firstIndex=0
-    for probe in probeList:
-        lastIndex=firstIndex + len(probe.contact_ids)
-        subRec = rec.channel_slice(recChannels[firstIndex:lastIndex])
-        subRec = subRec.set_probe(probe, group_mode="by_shank")
-        recList.append(subRec)
+    for d in probes:
+        lastIndex=firstIndex + len(d['probe'].contact_ids)
+        d['rec'] = rec.channel_slice(recChannels[firstIndex:lastIndex])
+        d['rec'] = d['rec'].set_probe(d['probe'], group_mode="by_shank")
         firstIndex = lastIndex
-    return recList
+    return probes
 def preprocess(rec):
     print('    preprocessing: ', rec)
     rec = bandpass_filter(recording=rec,freq_min=300.,freq_max=3000.)
@@ -125,6 +145,7 @@ def preprocess(rec):
     rec = common_reference(rec, operator="median", reference="global")
     return rec
 def runSorter(rec,savePath):
+    makedirs(savePath, exist_ok=True)
     sorterParameters = get_default_sorter_params('kilosort4')
     print('    sorting: ', rec)
     run_sorter(
@@ -132,46 +153,26 @@ def runSorter(rec,savePath):
         recording=rec,
         folder=savePath,
         verbose=True,
+        remove_existing_folder=True,
         **sorterParameters)
-def saveResults(paths, args):
-    move(paths.temporaryOutput, paths.finalOutput) # move folder to final destination
+def saveResults(options):
 
     # Make a folder for metadata
-    metaDataFolder =  path.join(paths.finalOutput, 'jobMetaData')
-    makedirs(metaDataFolder)
+    metaDataFolder =  path.join(options['paths']['processing'], 'jobMetaData')
+    makedirs(metaDataFolder, exist_ok=True)
 
-    # Make a matadata text file
-    metaDataLog = path.join(metaDataFolder, 'jobMetaData.txt')
-    file = open(metaDataLog, 'w')
+    # copy settings and log files
+    copy2(options['paths']['channelMap'], metaDataFolder)
+    copy2(options['paths']['recordingSettings'], metaDataFolder)
+    copy2(options['paths']['batch'] , metaDataFolder)
     
-    # Write Paths
-    file.write('-- Paths -- \n')
-    for field in paths._fields:
-        value=getattr(paths, field)
-        file.write(f'{field} : {value}\n')
+    try: 
+        copy2(options['paths']['log'], metaDataFolder)
+    except:
+        print('No log file found')
 
-    # write Input Arguments
-    file.write('-- Input arguments -- \n')
-    for field, value in vars(args).items():
-        file.write(f'{field} : {value}\n')
-
-    file.close()
-
-    # copy settings files
-    copy2(paths.channelMap, metaDataFolder)
-    copy2(paths.recordingSettings, metaDataFolder)
-    batchSettings = path.join(args.jobFolder, 'batchSettings.yaml')
-    copy2(batchSettings, metaDataFolder)
-
-    # copy log file 
-    logsFolder = path.join(args.jobFolder, 'logs')
-    for filename in listdir(logsFolder):
-        if filename.startswith(f'{args.taskID}_'):
-            src = path.join(logsFolder, filename)
-            dst = path.join(metaDataFolder, filename)
-            copy2(src, dst)
-
-    print('Spike Sorted Data:',paths.finalOutput)
+    move(options['paths']['processing'], options['paths']['results']) # move folder to final destination
+    print('Spike Sorted Data:',options['paths']['results'])
 
 if __name__ == "__main__":
     main()
