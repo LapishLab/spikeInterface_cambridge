@@ -1,4 +1,3 @@
-
 import os.path as path
 import sys
 import yaml
@@ -21,16 +20,21 @@ def getJobFolder():
 
     if not path.isdir(jobFolder):
         raise Exception("Job folder is not a valid directory: " + jobFolder)
+    
+    print("Job folder exists")
     return jobFolder
+
 def getBatchSettings(jobFolder, recSettings):
     ## Load default settings
     parentDir = path.dirname(path.realpath(__file__))
     defaultFile = parentDir + '/examples/batchSettings.yaml'
+    print("Loading default batch settings from", defaultFile)
     with open(defaultFile, 'r') as f:
             batchSettings = yaml.full_load(f)
             
     ## Load batch settings from job folder and overwrite with defined values
     batchSettingFile = jobFolder +'/batchSettings.yaml'
+    print("Overwriting default batch settings with values from", batchSettingFile)
     if path.isfile(batchSettingFile):
         with open(batchSettingFile, 'r') as f:
             userSettings = yaml.full_load(f)
@@ -42,14 +46,20 @@ def getBatchSettings(jobFolder, recSettings):
         maxRec = calcMaxRec(recPaths=recSettings['dataPath'])
         if batchSettings['time'] is None:
             batchSettings['time'] = str(round(maxRec*2))
+            print("time auto-estimated: ", batchSettings['time'])
         if batchSettings['mem'] is None:
             batchSettings['mem'] = str(round(maxRec*3)) + 'GB'
+            print("mem auto estimated: ", batchSettings['mem'])
     if batchSettings['array'] is None:
         batchSettings['array'] = '1-'+str(len(recSettings))
+    print("array size = ", batchSettings['array'])
     if batchSettings['job-name'] is None:
         batchSettings['job-name'] = path.split(jobFolder)[1]
+    print("job-name = ", batchSettings['job-name'])
     if batchSettings['output'] is None:
         batchSettings['output'] = jobFolder+'/logs/%a_%A.txt'
+    print("log file at: ", batchSettings['output'])
+    print("(%%a = array ID, %%A = master job ID)")
     return batchSettings
 def calcMaxRec(recPaths):
     maxRec = 0
@@ -59,23 +69,29 @@ def calcMaxRec(recPaths):
         if recSize>maxRec:
             maxRec = recSize
     maxRec = maxRec / 1e6 #convert to GB
+    print("Max recording size = ", maxRec, "GB")
     return maxRec
 def getRecordingSettings(jobFolder):
     ## Load recording files
     recSettingsFile = jobFolder +'/recordingSettings.csv'
-    if not path.isfile(recSettingsFile):
+    if path.isfile(recSettingsFile):
+        print("Recording settings file found at", recSettingsFile)
+    else:
         raise Exception("Recording settings file not found at: " + recSettingsFile)
+    
     recSettings = pandas.read_csv(recSettingsFile)
 
     ## Check that recording paths are valid directories
     for p in recSettings['dataPath']:
         if not path.isdir(p):
             raise Exception(p + "is not a valid directory path")
-        
+    print("All recording paths are valid directories")
+
     ## Check that channel map exists in job folder
     for m in recSettings['channelMap']:
         if not path.isfile(m):
             raise Exception("no channel map found at: \n" + m)
+    print("All channel maps are real files")
     return recSettings
 def sendBatchRequest(batchSettings, jobFolder):
     ## get path to batch job and python sorting script
@@ -92,7 +108,7 @@ def sendBatchRequest(batchSettings, jobFolder):
     cmd +=" " + jobFolder #2nd input to batch.sh, and 1st input to sortSingleRec.py
 
     ## Run Batch shell command
-    print(cmd)
+    #print(cmd)
     subprocess.run(cmd, shell=True)
 
 if __name__ == "__main__":
