@@ -192,7 +192,7 @@ def saveResults(options):
     
     # Copy log file to final destination if it exists (no log file if running in debug mode)
     if options['paths']['slurmLog']: 
-        copy2(options['paths']['slurmLog'], metaDataFolder)
+        move(options['paths']['slurmLog'], metaDataFolder)
 
 if __name__ == "__main__":
     main()
