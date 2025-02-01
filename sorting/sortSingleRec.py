@@ -155,8 +155,13 @@ def preprocess(rec):
     rec = common_reference(rec, operator="median", reference="global")
     return rec
 def runSorter(rec,savePath):
-    makedirs(savePath, exist_ok=True)
-    sorterParameters = get_default_sorter_params('kilosort4')
+    sorterParameters = dict()
+    sorterParameters['do_correction'] = False
+    sorterParameters['save_preprocessed_copy'] = True
+    # sorterParameters['skip_kilosort_preprocessing'] = True
+    # sorterParameters['nearest_templates'] = rec.get_num_channels()
+    #sorterParameters['min_template_size'] = 10 #may need to be decreased for smaller spacing
+
     print('    sorting: ', rec)
     run_sorter(
         sorter_name='kilosort4',
