@@ -25,10 +25,8 @@ def main():
     recList = splitRecByProbe(rec=fullRec,probes=probes)
     for d in recList:
         d['rec'] = preprocess(rec=d['rec'])
-    for d in recList:
         d['processingPath'] = path.join(options['paths']['processing'], d['probeName'])
         d['finalPath'] = path.join(options['paths']['results'], d['probeName'])
-    for d in recList:
         runSorter(rec=d['rec'], savePath=d['processingPath'])
     saveResults(options)
 
