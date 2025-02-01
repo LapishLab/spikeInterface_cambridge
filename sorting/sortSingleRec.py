@@ -30,10 +30,7 @@ def main():
         d['finalPath'] = path.join(options['paths']['results'], d['probeName'])
     saveToFile(data=recList, fname=path.join(options['paths']['processing'], 'recList.pkl'))
     for d in recList:
-        try:
-            runSorter(rec=d['rec'], savePath=d['processingPath'])
-        except:
-            warn('    sorting failed for ', d['probeName'])
+        runSorter(rec=d['rec'], savePath=d['processingPath'])
     saveResults(options)
 
 def saveToFile(data, fname):
@@ -169,6 +166,7 @@ def runSorter(rec,savePath):
         folder=savePath,
         verbose=True,
         remove_existing_folder=True,
+        raise_error=False,
         **sorterParameters)
 def saveResults(options):
     # move folder to final destination
