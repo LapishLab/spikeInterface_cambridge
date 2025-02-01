@@ -23,11 +23,10 @@ def main():
     fullRec = loadRecording(recPath=options['paths']['rawData'])
     probes = createProbes(channelMapPath=options['paths']['channelMap'])
     recList = splitRecByProbe(rec=fullRec,probes=probes)
-    for d in recList:
+    for i, d in enumerate(recList):
         d['rec'] = preprocess(rec=d['rec'])
-        d['processingPath'] = path.join(options['paths']['processing'], d['probeName'])
-        d['finalPath'] = path.join(options['paths']['results'], d['probeName'])
-        runSorter(rec=d['rec'], savePath=d['processingPath'])
+        savePath = options['paths']['probeOutput'][i]
+        runSorter(rec=d['rec'], savePath=savePath)
     saveResults(options)
 
 def logInfo(options):
@@ -81,10 +80,13 @@ def getPaths(options):
     dataSetName = PurePath( paths['rawData']).name
     now = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
     baseName = f'{options['taskID']}_rec-{dataSetName}_sort-{now}'
-
-    paths['processing'] = path.join(options['jobFolder'], 'processing', baseName)
     paths['results'] = path.join(options['jobFolder'], 'results', baseName)
+    channelMap = read_csv(paths['channelMap'])
+    paths['probeOutput'] = []
+    for i in range(len(channelMap.columns)):
+        paths['probeOutput'].append(path.join(paths['results'], f'probe{i}'))
 
+    paths['metaData'] =  path.join(paths['results'], 'jobMetaData')
     ## Specify the expected location of the Slurm log file
     if options['debugWithoutSlurm']:
         paths['log'] = None
@@ -158,14 +160,11 @@ def runSorter(rec,savePath):
         folder=savePath,
         verbose=True,
         remove_existing_folder=True,
-        raise_error=False,
+        raise_error=True,
         **sorterParameters)
 def saveResults(options):
-    # move folder to final destination
-    move(options['paths']['processing'], options['paths']['results']) 
-    
     # Make a folder for metadata
-    metaDataFolder =  path.join(options['paths']['results'], 'jobMetaData')
+    metaDataFolder = options['paths']['metaData']
     makedirs(metaDataFolder, exist_ok=True)
 
     # copy settings and log files
