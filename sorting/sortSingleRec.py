@@ -21,6 +21,8 @@ def main():
     options = parseInputs()
     logInfo(options)
     fullRec = loadRecording(recPath=options['paths']['rawData'])
+    if options['shortenRec']:
+        fullRec = shortenRec(rec=fullRec, timeDur = options['shortenRec'])
     probes = createProbes(channelMapPath=options['paths']['channelMap'])
     recList = splitRecByProbe(rec=fullRec,probes=probes)
     for i, d in enumerate(recList):
@@ -39,7 +41,12 @@ def logInfo(options):
     repo = Repo(scriptPath, search_parent_directories=True)
     sha = repo.head.object.hexsha
     print('Git Commit = ', sha)
-
+def shortenRec(rec, timeDur):
+    tstart = rec._get_t_starts()
+    start=tstart[0]
+    end = tstart[0]+timeDur
+    rec = rec.time_slice(start_time=start,end_time=end)
+    return rec
 def parseInputs():
     parser = ArgumentParser(description='Spike sort a single recording')
     parser.add_argument('--jobFolder', 
@@ -50,6 +57,11 @@ def parseInputs():
                         help='Enable for debugging without submitting to Slurm',
                         required=False,
                         )
+    parser.add_argument('--shortenRec',
+                    help='Shorten the recording to this duration (s)',
+                    type=int,
+                    required=False,
+                    )
     args = parser.parse_args()
     options = vars(args) # Convert to dictionary so additional settings can be added
 
