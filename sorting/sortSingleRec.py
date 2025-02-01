@@ -28,15 +28,9 @@ def main():
     for d in recList:
         d['processingPath'] = path.join(options['paths']['processing'], d['probeName'])
         d['finalPath'] = path.join(options['paths']['results'], d['probeName'])
-    saveToFile(data=recList, fname=path.join(options['paths']['processing'], 'recList.pkl'))
     for d in recList:
         runSorter(rec=d['rec'], savePath=d['processingPath'])
     saveResults(options)
-
-def saveToFile(data, fname):
-    makedirs(path.dirname(fname), exist_ok=True) #make sure directory exists
-    with open(fname, 'wb') as f:
-        pickle.dump(data, f)
 
 def logInfo(options):
     from spikeinterface import __version__ as si_version
