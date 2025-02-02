@@ -107,7 +107,7 @@ def getPaths(options):
     ## Setup output folders
     dataSetName = PurePath( paths['rawData']).name
     now = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
-    baseName = f'{options['taskID']}_rec-{dataSetName}_sort-{now}'
+    baseName= f'{dataSetName}__{options['jobID']}_{options['taskID']}'
     paths['results'] = path.join(options['jobFolder'], 'results', baseName)
     channelMap = read_csv(paths['channelMap'])
     paths['probeOutput'] = []
