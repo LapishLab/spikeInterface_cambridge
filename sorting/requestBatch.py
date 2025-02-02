@@ -8,7 +8,8 @@ def main():
     jobFolder = getJobFolder()
     recSettings = getRecordingSettings(jobFolder=jobFolder)
     batchSettings = getBatchSettings(jobFolder=jobFolder, recSettings=recSettings)
-    sendBatchRequest(batchSettings=batchSettings, jobFolder=jobFolder)
+    resp = sendBatchRequest(batchSettings=batchSettings, jobFolder=jobFolder)
+    startStatusUpdater(ShellResp=resp, jobFolder=jobFolder)
 
 def getJobFolder():
     ## Check that valid job folder was provided as argument
@@ -109,6 +110,23 @@ def sendBatchRequest(batchSettings, jobFolder):
 
     ## Run Batch shell command
     #print(cmd)
+    return subprocess.run(cmd, shell=True, capture_output=True, text=True, check=True)
+
+def startStatusUpdater(ShellResp, jobFolder):
+    # Parse SlurmID from shell response
+    import re
+    match = re.search('Submitted batch job (.*)\n', ShellResp.stdout)
+    if match:
+        SlurmID = match.group(1)
+    else:
+        raise Exception("Could not parse job number for status script")
+    
+    ## get path to status script
+    parentDir = path.dirname(path.realpath(__file__))
+    statusPy = parentDir + "/status.py"
+
+    # Run status script in background
+    cmd = f'nohup python {statusPy} {jobFolder} {SlurmID} &'
     subprocess.run(cmd, shell=True)
 
 if __name__ == "__main__":
