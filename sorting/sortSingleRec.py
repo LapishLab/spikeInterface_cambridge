@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 def main():
     print('running sortSingleRec.py')
     options = parseInputs()
-    log = logInfo(options)
+    logInfo(options)
     fullRec = loadRecording(recPath=options['paths']['rawData'])
     if options['shortenRec']:
         fullRec = shortenRec(rec=fullRec, timeDur = options['shortenRec'])
@@ -31,7 +31,10 @@ def main():
         d['rec'] = preprocess(rec=d['rec'])
         savePath = options['paths']['probeOutput'][i]
         runSorter(rec=d['rec'], savePath=savePath)
-    saveResults(options)
+    # move Slurm log metadata folder (no log file if running in debug mode)
+    if options['paths']['slurmLog']: 
+        move(options['paths']['slurmLog'], options['paths']['metaData'])
+    log.info('Job completed successfully')
 
 def logInfo(options):
     # Save our logger to a custom file
@@ -48,6 +51,12 @@ def logInfo(options):
     repo = Repo(scriptPath, search_parent_directories=True)
     sha = repo.head.object.hexsha
     log.info(f'Git Commit = {sha}')
+
+    # Copy over job files to the metaData folder
+    copy2(options['paths']['channelMap'], options['paths']['metaData'])
+    copy2(options['paths']['recCsv'], options['paths']['metaData'])
+    copy2(options['paths']['batch'] , options['paths']['metaData'])
+
 def shortenRec(rec, timeDur):
     tstart = rec._get_t_starts()
     start=tstart[0]
@@ -181,18 +190,6 @@ def runSorter(rec,savePath):
         remove_existing_folder=True,
         raise_error=True,
         **sorterParameters)
-def saveResults(options):
-    metaDataFolder = options['paths']['metaData']
-
-    # copy settings and log files
-    copy2(options['paths']['channelMap'], metaDataFolder)
-    copy2(options['paths']['recCsv'], metaDataFolder)
-    copy2(options['paths']['batch'] , metaDataFolder)
-    log.info('Job completed successfully')
-    
-    # Copy log file to final destination if it exists (no log file if running in debug mode)
-    if options['paths']['slurmLog']: 
-        move(options['paths']['slurmLog'], metaDataFolder)
 
 if __name__ == "__main__":
     main()
