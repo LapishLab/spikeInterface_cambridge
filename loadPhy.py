@@ -8,16 +8,21 @@ dat_path = sorterOutput + '/temp_wh.dat'
 paramsPath = sorterOutput + '/params.py'
 newparamsPath = sorterOutput + '/params_update.py'
 def main():
-    validatePaths()
-    updateParams()
-    template_gui(newparamsPath)
+    if validatePaths():
+        updateParams()
+        template_gui(newparamsPath)
+    else:
+        print('Skipping params.py update. Phy might be able to use raw data (does not seem to work for KS4 sorted data).')
+        template_gui(paramsPath)
 
 def validatePaths():
     print('Validating paths')
     if not os.path.isfile(paramsPath):
         raise FileNotFoundError(f"params.py file not found at {paramsPath}")
     if not os.path.isfile(dat_path):
-        raise FileNotFoundError(f"temp_wh.dat file not found at {dat_path}")
+        print(f"temp_wh.dat file not found at {dat_path}")
+        return False
+    return True
 
 def updateParams():
     print('Updating dat_path in params_update.py') 
