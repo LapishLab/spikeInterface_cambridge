@@ -127,7 +127,7 @@ def startStatusUpdater(ShellResp, jobFolder):
     statusPy = parentDir + "/sorting/status.py"
 
     # Run status script in background
-    cmd = f'nohup python {statusPy} {jobFolder} {SlurmID} &'
+    cmd = f'nohup python {statusPy} {jobFolder} {SlurmID} > /dev/null 2>&1 &' #redirect output and error to /dev/null to avoid nohup.out clutter
     subprocess.run(cmd, shell=True)
 
 if __name__ == "__main__":
