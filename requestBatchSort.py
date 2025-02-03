@@ -28,7 +28,7 @@ def getJobFolder():
 def getBatchSettings(jobFolder, recSettings):
     ## Load default settings
     parentDir = path.dirname(path.realpath(__file__))
-    defaultFile = parentDir + '/examples/batchSettings.yaml'
+    defaultFile = parentDir + '/sorting/examples/batchSettings.yaml'
     print("Loading default batch settings from", defaultFile)
     with open(defaultFile, 'r') as f:
             batchSettings = yaml.full_load(f)
@@ -97,8 +97,8 @@ def getRecordingSettings(jobFolder):
 def sendBatchRequest(batchSettings, jobFolder):
     ## get path to batch job and python sorting script
     parentDir = path.dirname(path.realpath(__file__))
-    batchFile = parentDir + "/batch.sh"
-    sortingScript = parentDir + "/sortSingleRec.py"
+    batchFile = parentDir + "/sorting/batch.sh"
+    sortingScript = parentDir + "/sorting/sortSingleRec.py"
 
     ## Build Shell command
     cmd = "sbatch" # start of command
@@ -123,7 +123,7 @@ def startStatusUpdater(ShellResp, jobFolder):
     
     ## get path to status script
     parentDir = path.dirname(path.realpath(__file__))
-    statusPy = parentDir + "/status.py"
+    statusPy = parentDir + "/sorting/status.py"
 
     # Run status script in background
     cmd = f'nohup python {statusPy} {jobFolder} {SlurmID} &'
