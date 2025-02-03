@@ -111,12 +111,16 @@ def sendBatchRequest(batchSettings, jobFolder):
 
     ## Run Batch shell command
     #print(cmd)
-    return subprocess.run(cmd, shell=True, capture_output=True, text=True, check=True)
+    resp = subprocess.run(cmd, shell=True, capture_output=True, text=True, check=False)
+    if resp.returncode:
+        raise ChildProcessError(resp.stderr)
+    else:
+        return resp.stdout
 
 def startStatusUpdater(ShellResp, jobFolder):
     # Parse SlurmID from shell response
     import re
-    match = re.search('Submitted batch job (.*)\n', ShellResp.stdout)
+    match = re.search('Submitted batch job (.*)\n', ShellResp)
     if match:
         SlurmID = match.group(1)
     else:
