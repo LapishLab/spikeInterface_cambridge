@@ -175,11 +175,9 @@ def preprocess(rec):
     return rec
 def runSorter(rec,savePath):
     sorterParameters = dict()
-    sorterParameters['do_correction'] = False
+    sorterParameters['do_correction'] = True
     sorterParameters['save_preprocessed_copy'] = True
-    # sorterParameters['skip_kilosort_preprocessing'] = True
-    # sorterParameters['nearest_templates'] = rec.get_num_channels()
-    #sorterParameters['min_template_size'] = 10 #may need to be decreased for smaller spacing
+    sorterParameters['nearest_templates'] = rec.get_num_channels()
 
     log.info(f'sorting: {rec}')
     run_sorter(
