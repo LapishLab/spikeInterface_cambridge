@@ -1,20 +1,16 @@
 from datetime import datetime
 from spikeinterface.extractors import read_openephys
 from spikeinterface.preprocessing import bandpass_filter, common_reference, detect_bad_channels
-from spikeinterface.sorters import run_sorter, get_default_sorter_params
+from spikeinterface.sorters import run_sorter
 from probeinterface import get_probe
 import numpy as np
 from pathlib import PurePath
-from shutil import rmtree, move, copy2
-from os import listdir, makedirs, path, chdir, environ
-from warnings import warn
+from shutil import move, copy2
+from os import listdir, makedirs, path, environ
 from pandas import read_csv
-from collections import namedtuple
 from argparse import ArgumentParser
-from subprocess import check_output
-from pprint import pp, pformat
+from pprint import pformat
 from git import Repo
-import pickle
 import logging
 log = logging.getLogger(__name__)
 
