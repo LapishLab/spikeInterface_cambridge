@@ -14,6 +14,8 @@ def main():
     status = pollStatus(statusFile, waitTime)
     reportFile = f'{jobFolder}/{jobID}_report.csv'
     saveReport(reportFile, status)
+    import cleanup
+    cleanup.cleanup(statusFile)
 
 def pollStatus(statusFile, waitTime):
     cmd=f'sacct --jobs={jobID} -X --format=JobID,State,CPUTime,TimeLimit,ExitCode'
