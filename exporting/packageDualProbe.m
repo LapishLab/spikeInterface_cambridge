@@ -1,8 +1,15 @@
-addpath(genpath(strcat(pwd,'/npy-matlab')))
+addpath(genpath('/geode2/home/u050/lapishla/BigRed200/spikes/exporting/npy-matlab'))
+
+%% Hard coded paths for now
 dataDir = '/N/project/lapishLabWorkspace/DualProbes/2024-05-10-Session 2/2024-05-10_11-24-32/';
 sortDir = '/N/project/lapishLabWorkspace/DualProbes/sortAll/sorted/2024-05-10_11-24-32/';
 outputFile = '/N/project/lapishLabWorkspace/DualProbes/sortAll/export/2024-05-10_11-24-32.mat';
 probeNames = ["ASSY-236-E-1", "ASSY-236-F"];
+
+% dataDir = '/N/u/lapishla/Quartz/Desktop/lapishLabWorkspace/DualProbes/2024-05-14-Session 1/2024-05-14_12-54-45/';
+% sortDir = '/N/u/lapishla/Quartz/Desktop/lapishLabWorkspace/DualProbes/sortAll/sorted/2024-05-14_12-54-45/';
+% outputFile = '/N/project/lapishLabWorkspace/DualProbes/sortAll/export/2024-05-14_12-54-45.mat';
+% probeNames = ["ASSY-236-F","ASSY-236-E-1"];
 %%
 [~,recTimestamps] = load_open_ephys_data_faster([dataDir, '100_CH1.continuous']);
 clusters = getClusterInfo(sortDir, probeNames, recTimestamps);
@@ -23,7 +30,7 @@ function clusters = getClusterInfo(sortDir, probeNames, recTimestamps)
     
     clusters = table();
     for i=1:length(sorterOutputDirs)
-        sortFolder = sorterOutputDirs(1);
+        sortFolder = sorterOutputDirs(i);
         cluster_info = readtable(sortFolder+"cluster_info.tsv", 'FileType','delimitedtext');
         cluster_info = addSpikeTimes(cluster_info, sortFolder, recTimestamps);
         cluster_info.probeName(:) = probeNames(i);
