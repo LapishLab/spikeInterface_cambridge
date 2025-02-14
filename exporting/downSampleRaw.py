@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 from spikeinterface.extractors import read_openephys
 from os import listdir
 import numpy as np
-import scipy.io
+from scipy.io import savemat
 from spikeinterface.preprocessing import resample
 
 def main():
@@ -14,18 +14,18 @@ def main():
     if options.shortenRec:
         rec = shortenRec(rec=rec, timeDur = options.shortenRec)
 
-    save2mat(rec, options.exportFolder + '/unfiltered.mat')# TODO: remove temp for testing
+    rec2mat(rec, options.exportFolder + '/unfiltered.mat')# TODO: remove temp for testing
     rec = resample(rec,options.desiredRate)
-    save2mat(rec, options.exportFolder + '/downsampled.mat')
+    rec2mat(rec, options.exportFolder + '/downsampled.mat')
      
 
-def save2mat(rec, fname):
+def rec2mat(rec, fname):
     data = dict() # scipy.io.savemat converts dict to MATLAB struct
     data['time_stamp'] = rec.get_times()
     for id in rec.channel_ids:
         trace = rec.get_traces(channel_ids=[id])
         data[id] = np.squeeze(trace)
-    scipy.io.savemat(fname, data, do_compression=True)
+    savemat(fname, data, do_compression=True)
     return
 
 def parseInputs():
