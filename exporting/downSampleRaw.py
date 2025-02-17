@@ -21,10 +21,19 @@ def main():
 
 def rec2mat(rec, fname):
     data = dict() # scipy.io.savemat converts dict to MATLAB struct
-    data['time_stamp'] = rec.get_times()
-    for id in rec.channel_ids:
-        trace = rec.get_traces(channel_ids=[id])
-        data[id] = np.squeeze(trace)
+    data['time'] = rec.get_times()
+    data['traces'] = rec.get_traces()
+
+    # Create structured array of all Channel properties
+    channel_properties = rec.get_property_keys() # get field names (e.g. channel_name)
+    data_format = [rec.get_property(f).dtype for f in channel_properties] # get data type of each field
+    dtype = np.dtype({'names':channel_properties ,'formats': data_format}) # create a numpy dtype object with field names and data type
+    numChannels = rec.get_num_channels()
+    channels = np.empty(numChannels, dtype=dtype) # create empty structured array
+    for prop in channel_properties:
+        channels[prop] = rec.get_property(prop)  # assign values to structured array
+    data['channels'] = channels
+
     savemat(fname, data, do_compression=True)
     return
 
