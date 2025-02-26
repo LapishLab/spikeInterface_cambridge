@@ -1,6 +1,7 @@
 
 
 from argparse import ArgumentParser
+from time import time
 from spikeinterface.extractors import read_openephys, read_openephys_event
 from os import listdir, makedirs
 import numpy as np
@@ -26,13 +27,33 @@ def stream2mat(dataPath, outputPath, desiredRate=1000):
 
     data = dict() # scipy.io.savemat converts dict to MATLAB struct
     data['time'] = stream.get_times()
-    data['traces'] = stream.get_traces()
+    start_time = time()
+    #data['traces'] = stream.get_traces() # This never finishes when debugging long recordings, so I'm using the custom function below.
+    data['traces'] = getTraces(stream)
+    stop_time = time()
+    print(f"Time to get traces: {stop_time-start_time}")
     data['channels'] = getChannelProperties(stream)
     makedirs(outputPath, exist_ok=True)
-    savemat(outputPath+'/stream.mat', data, do_compression=True)
+    stream_mat = outputPath+'/stream.mat'
+    print(f"Saving stream data to {stream_mat}")
+    savemat(stream_mat, data, do_compression=True)
+
+def getTraces(stream):
+    # Preallocate an empty ndarray
+    num_channels = stream.get_num_channels()
+    num_samples = stream.get_num_samples()
+    print(f"Preallocating array for traces")
+    traces = np.empty((num_samples, num_channels), dtype=stream.dtype)
+
+    # Fill in the columns of the empty ndarray
+    for ind, id in enumerate(stream.channel_ids):
+        traces[:, ind] = stream.get_traces(channel_ids=[id]).flatten()
+        print(f"{id} trace retrieved")
+    return traces
 
 def getChannelProperties(stream):
     # Create structured array of all Channel properties
+    print("Getting channel properties")
     channel_properties = stream.get_property_keys() # get field names (e.g. channel_name)
     data_format = [stream.get_property(f).dtype for f in channel_properties] # get data type of each field
     dtype = np.dtype({'names':channel_properties ,'formats': data_format}) # create a numpy dtype object with field names and data type
@@ -43,13 +64,16 @@ def getChannelProperties(stream):
     return channels
 
 def events2mat(dataPath, outputPath):
+    print(f'Loading event data from {dataPath}')
     eventExtractor = read_openephys_event(dataPath) #TODO: add support for old OE version.
     events = dict()
     for id in eventExtractor.channel_ids:
         newID = id.replace(" ", "_") #MATLAB doesn't like spaces in struct field names
         events[newID] = eventExtractor.get_events(id)
     makedirs(outputPath, exist_ok=True)
-    savemat(outputPath+'/events.mat', events, do_compression=True)
+    event_mat = outputPath+'/events.mat'
+    print(f"Saving event data to {event_mat}")
+    savemat(event_mat, events, do_compression=True)
 
 def parseInputs():
     parser = ArgumentParser(description='Spike sort a single recording')
@@ -71,6 +95,7 @@ def parseInputs():
     return options
 
 def loadRecording(recPath):
+    print(f'Loading stream info from {recPath}')
     #Load Signal channel data. Have to do this differently depending on which OE version was used to record
     oldOEFiles = [f for f in listdir(recPath) if f.endswith('.continuous')] #Old OE version has .continuous files directly in recording folder
     if oldOEFiles: 
@@ -84,7 +109,7 @@ def loadRecording(recPath):
         segmentDuration = [rec.get_duration(i) for i in range(rec.get_num_segments())]
         print(f'Raw data contains multiple segments with the following time durations (s): {segmentDuration}. Only the longest segment will be exported') 
         rec = rec.select_segments(int(np.argmax(segmentDuration)))
-        
+    #rec=shortenRec(rec, timeDur=600) #TODO: remove this line after testing
     return rec
 
 def shortenRec(rec, timeDur):
