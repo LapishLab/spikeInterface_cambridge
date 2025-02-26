@@ -8,7 +8,7 @@ import subprocess
 def main():
     jobFolder = getJobFolder()
     recSettings = getRecordingSettings(jobFolder=jobFolder)
-    batchSettings = getBatchSettings(jobFolder=jobFolder, recSettings=recSettings)
+    batchSettings = get_slurm_settings(jobFolder=jobFolder, recSettings=recSettings)
     resp = sendBatchRequest(batchSettings=batchSettings, jobFolder=jobFolder)
     startStatusUpdater(ShellResp=resp, jobFolder=jobFolder)
 
@@ -26,43 +26,46 @@ def getJobFolder():
     print("Job folder exists")
     return jobFolder
 
-def getBatchSettings(jobFolder, recSettings):
-    ## Load default settings
+def load_slurm_settings_from_yaml(yamlFile):
+    with open(yamlFile, 'r') as f:
+        fullYam = yaml.full_load(f)
+    return fullYam['slurm_settings']
+
+def get_slurm_settings(jobFolder, recSettings):
+    ## Load default settings from yaml in this git repository
     parentDir = path.dirname(path.realpath(__file__))
-    defaultFile = parentDir + '/exporting/export_settings.yaml'
-    print("Loading default export settings from", defaultFile)
-    with open(defaultFile, 'r') as f:
-            batchSettings = yaml.full_load(f)
+    default_yaml = parentDir + '/exporting/export_settings.yaml'
+    print("Loading default export settings from", default_yaml)
+    slurm_settings = load_slurm_settings_from_yaml(default_yaml)
             
-    ## Load batch settings from job folder and overwrite with defined values
-    batchSettingFile = jobFolder +'/export_settings.yaml'
-    print("Overwriting default export settings with values from", batchSettingFile)
-    if path.isfile(batchSettingFile):
-        with open(batchSettingFile, 'r') as f:
-            userSettings = yaml.full_load(f)
-        for key, value in userSettings.items():
-            batchSettings[key] = value
+    ## Load user settings from job folder and overwrite defaults
+    user_yaml = jobFolder +'/export_settings.yaml'
+    if path.isfile(user_yaml):
+        print("Overwriting default export settings with values from", user_yaml)
+        user_overides = load_slurm_settings_from_yaml(user_yaml)
+        for key, value in user_overides.items():
+            slurm_settings[key] = value
 
     ## Compute missing values if null
-    if batchSettings['time'] is None or batchSettings['mem'] is None:
+    if slurm_settings['time'] is None or slurm_settings['mem'] is None:
         maxRec = calcMaxRec(recPaths=recSettings['dataPath'])
-        if batchSettings['time'] is None:
-            batchSettings['time'] = str(round(maxRec*2))
-            print("time auto-estimated: ", batchSettings['time'])
-        if batchSettings['mem'] is None:
-            batchSettings['mem'] = str(round(maxRec*3)) + 'GB'
-            print("mem auto estimated: ", batchSettings['mem'])
-    if batchSettings['array'] is None:
-        batchSettings['array'] = '1-'+str(len(recSettings))
-    print("array size = ", batchSettings['array'])
-    if batchSettings['job-name'] is None:
-        batchSettings['job-name'] = path.split(jobFolder)[1]
-    print("job-name = ", batchSettings['job-name'])
-    if batchSettings['output'] is None:
-        batchSettings['output'] = jobFolder+'/logs/%a_%A.txt'
-    print("log file at: ", batchSettings['output'])
+        if slurm_settings['time'] is None:
+            slurm_settings['time'] = str(round(maxRec*2))
+            print("time auto-estimated: ", slurm_settings['time'])
+        if slurm_settings['mem'] is None:
+            slurm_settings['mem'] = str(round(maxRec*3)) + 'GB'
+            print("mem auto estimated: ", slurm_settings['mem'])
+
+    ## Set automatic values
+    slurm_settings['array'] = '1-'+str(len(recSettings))
+    slurm_settings['job-name'] = path.split(jobFolder)[1]
+    slurm_settings['output'] = jobFolder+'/logs/%a_%A.txt'
+    slurm_settings['nodes'] = '1'
+    slurm_settings['ntasks-per-node'] = '1'
+
+    print("log file at: ", slurm_settings['output'])
     print("(%%a = array ID, %%A = master job ID)")
-    return batchSettings
+    return slurm_settings
 def calcMaxRec(recPaths):
     maxRec = 0
     for p in recPaths:
