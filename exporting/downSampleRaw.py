@@ -14,7 +14,7 @@ def main():
     if options.shortenRec:
         rec = shortenRec(rec=rec, timeDur = options.shortenRec)
 
-    rec2mat(rec, options.exportFolder + '/unfiltered.mat')# TODO: remove temp for testing
+    # rec2mat(rec, options.exportFolder + '/unfiltered.mat')# TODO: remove temp for testing
     rec = resample(rec,options.desiredRate)
     rec2mat(rec, options.exportFolder + '/downsampled.mat')
      
