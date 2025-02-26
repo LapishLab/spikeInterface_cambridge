@@ -2,7 +2,7 @@
 
 from argparse import ArgumentParser
 from spikeinterface.extractors import read_openephys, read_openephys_event
-from os import listdir
+from os import listdir, makedirs
 import numpy as np
 from scipy.io import savemat
 from spikeinterface.preprocessing import resample
@@ -17,18 +17,18 @@ def main():
     stream2mat(
         dataPath=options.dataFolder,
         outputPath=options.exportFolder,
-        shortenRec=options.shortenRec,
         desiredRate=options.desiredRate
     )
 
-def stream2mat(dataPath, outputPath, shortenRec=None, desiredRate=1000):
-    stream = loadRecording(recPath=dataPath, shortenRec=shortenRec)
+def stream2mat(dataPath, outputPath, desiredRate=1000):
+    stream = loadRecording(recPath=dataPath)
     stream = resample(stream,desiredRate)
 
     data = dict() # scipy.io.savemat converts dict to MATLAB struct
     data['time'] = stream.get_times()
     data['traces'] = stream.get_traces()
     data['channels'] = getChannelProperties(stream)
+    makedirs(outputPath, exist_ok=True)
     savemat(outputPath+'/stream.mat', data, do_compression=True)
 
 def getChannelProperties(stream):
@@ -43,7 +43,12 @@ def getChannelProperties(stream):
     return channels
 
 def events2mat(dataPath, outputPath):
-    events = read_openephys_event(dataPath)
+    eventExtractor = read_openephys_event(dataPath) #TODO: add support for old OE version.
+    events = dict()
+    for id in eventExtractor.channel_ids:
+        newID = id.replace(" ", "_") #MATLAB doesn't like spaces in struct field names
+        events[newID] = eventExtractor.get_events(id)
+    makedirs(outputPath, exist_ok=True)
     savemat(outputPath+'/events.mat', events, do_compression=True)
 
 def parseInputs():
@@ -56,11 +61,6 @@ def parseInputs():
         help='Path to data folder',
         required=True
         )
-    parser.add_argument('--shortenRec',
-        help='Shorten the recording to this duration (s)',
-        type=int,
-        required=False,
-        )
     parser.add_argument('--desiredRate',
         help='The final sample rate after downsampling (Hz), Default 1000 Hz',
         type=int,
@@ -70,7 +70,7 @@ def parseInputs():
     options = parser.parse_args()
     return options
 
-def loadRecording(recPath, shortenRec=None):
+def loadRecording(recPath):
     #Load Signal channel data. Have to do this differently depending on which OE version was used to record
     oldOEFiles = [f for f in listdir(recPath) if f.endswith('.continuous')] #Old OE version has .continuous files directly in recording folder
     if oldOEFiles: 
@@ -78,19 +78,13 @@ def loadRecording(recPath, shortenRec=None):
         rec = read_openephys(recPath,stream_name='Signals CH') # TODO: Load all streams for export, not just 'Signals CH'
     else:
         rec = read_openephys(recPath)
-        # Pull out signal channels (IDs starting with CH)
-        # isSignalChannel = np.char.find(rec.channel_ids, 'CH')==0
-        # signalChannels = rec.channel_ids[isSignalChannel]
-        # rec = rec.channel_slice(channel_ids=signalChannels)
 
     # Check if recording has multiple segments
-    if rec.get_num_segments() > 1:
+    if rec.get_num_segments() > 1: # TODO: handle multiple segments more flexibly
         segmentDuration = [rec.get_duration(i) for i in range(rec.get_num_segments())]
-        print(f'Raw data contains multiple segments with the following time durations (s): {segmentDuration}. Only the longest segment will be spike sorted')
+        print(f'Raw data contains multiple segments with the following time durations (s): {segmentDuration}. Only the longest segment will be exported') 
         rec = rec.select_segments(int(np.argmax(segmentDuration)))
-
-    if shortenRec:
-        rec = shortenRec(rec=rec, timeDur=shortenRec)
+        
     return rec
 
 def shortenRec(rec, timeDur):
