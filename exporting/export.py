@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from os import environ, path
 from pathlib import PurePath
+from shutil import move
 from pandas import read_csv
 from rawData import events2mat, stream2mat
 
@@ -14,6 +15,10 @@ def main():
     events2mat(dataPath=rec_settings['dataPath'], outputPath=outputPath)
     stream2mat(dataPath=rec_settings['dataPath'], outputPath=outputPath)
     # TODO: spikes2Mat(rec_settings['sortPath'],outputPath)
+    
+    if not options['debugWithoutSlurm']: # Move log file to output folder
+        logPath = f'{options['jobFolder']}/logs/{options['taskID']}_{options['jobID']}.txt'
+        move(logPath, outputPath)
 
 def parseInputs():
     print('parsing inputs')
