@@ -10,13 +10,19 @@ from spikeinterface.preprocessing import resample
 def main():
     print('running downSampleRaw.py')
     options = parseInputs()
-    rec = loadRecording(recPath=options.dataFolder)
-    if options.shortenRec:
-        rec = shortenRec(rec=rec, timeDur = options.shortenRec)
+    rawData2Mat(
+        dataPath=options.dataFolder,
+        outputPath=options.exportFolder,
+        shortenRec=options.shortenRec,
+        desiredRate=options.desiredRate
+        )
 
-    # rec2mat(rec, options.exportFolder + '/unfiltered.mat')# TODO: remove temp for testing
-    rec = resample(rec,options.desiredRate)
-    rec2mat(rec, options.exportFolder + '/downsampled.mat')
+def rawData2Mat(dataPath, outputPath, shortenRec=None, desiredRate=1000):
+    rec = loadRecording(recPath=dataPath)
+    if shortenRec:
+        rec = shortenRec(rec=rec, timeDur=shortenRec)
+    rec = resample(rec,desiredRate)
+    rec2mat(rec, outputPath + '/downsampled.mat')
      
 
 def rec2mat(rec, fname):
