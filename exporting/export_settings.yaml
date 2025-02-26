@@ -1,0 +1,17 @@
+# Erase or comment out line to use default.
+# null indicates default value is determined by requestBatch.py
+---
+# You might want to change these
+mail-user: "lapishla@iu.edu" #For Slurm notifications
+mem: null #Memory (GB) reserved for each job (default: auto estimate from raw data size (GB * 3))
+time: null #Time (minutes) reserved for each job (default: auto estimate from raw data size (GB * 2))
+
+# You probably don't need to change these
+job-name: null #default: determined by job folder
+array: null #default: determined by length of jobSettings.csv
+output: null #default: placed in log folder in job folder
+partition: "general"
+account: "r00229" 
+mail-type: "ALL"
+nodes: "1"
+ntasks-per-node: "1"
