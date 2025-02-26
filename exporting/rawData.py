@@ -1,7 +1,7 @@
 
 
 from argparse import ArgumentParser
-from spikeinterface.extractors import read_openephys
+from spikeinterface.extractors import read_openephys, read_openephys_event
 from os import listdir
 import numpy as np
 from scipy.io import savemat
@@ -10,38 +10,41 @@ from spikeinterface.preprocessing import resample
 def main():
     print('running downSampleRaw.py')
     options = parseInputs()
-    rawData2Mat(
+    events2mat(
+        dataPath=options.dataFolder,
+        outputPath=options.exportFolder
+    )
+    stream2mat(
         dataPath=options.dataFolder,
         outputPath=options.exportFolder,
         shortenRec=options.shortenRec,
         desiredRate=options.desiredRate
-        )
+    )
 
-def rawData2Mat(dataPath, outputPath, shortenRec=None, desiredRate=1000):
-    rec = loadRecording(recPath=dataPath)
-    if shortenRec:
-        rec = shortenRec(rec=rec, timeDur=shortenRec)
-    rec = resample(rec,desiredRate)
-    rec2mat(rec, outputPath + '/downsampled.mat')
-     
+def stream2mat(dataPath, outputPath, shortenRec=None, desiredRate=1000):
+    stream = loadRecording(recPath=dataPath, shortenRec=shortenRec)
+    stream = resample(stream,desiredRate)
 
-def rec2mat(rec, fname):
     data = dict() # scipy.io.savemat converts dict to MATLAB struct
-    data['time'] = rec.get_times()
-    data['traces'] = rec.get_traces()
+    data['time'] = stream.get_times()
+    data['traces'] = stream.get_traces()
+    data['channels'] = getChannelProperties(stream)
+    savemat(outputPath+'/stream.mat', data, do_compression=True)
 
+def getChannelProperties(stream):
     # Create structured array of all Channel properties
-    channel_properties = rec.get_property_keys() # get field names (e.g. channel_name)
-    data_format = [rec.get_property(f).dtype for f in channel_properties] # get data type of each field
+    channel_properties = stream.get_property_keys() # get field names (e.g. channel_name)
+    data_format = [stream.get_property(f).dtype for f in channel_properties] # get data type of each field
     dtype = np.dtype({'names':channel_properties ,'formats': data_format}) # create a numpy dtype object with field names and data type
-    numChannels = rec.get_num_channels()
+    numChannels = stream.get_num_channels()
     channels = np.empty(numChannels, dtype=dtype) # create empty structured array
     for prop in channel_properties:
-        channels[prop] = rec.get_property(prop)  # assign values to structured array
-    data['channels'] = channels
+        channels[prop] = stream.get_property(prop)  # assign values to structured array
+    return channels
 
-    savemat(fname, data, do_compression=True)
-    return
+def events2mat(dataPath, outputPath):
+    events = read_openephys_event(dataPath)
+    savemat(outputPath+'/events.mat', events, do_compression=True)
 
 def parseInputs():
     parser = ArgumentParser(description='Spike sort a single recording')
@@ -67,7 +70,7 @@ def parseInputs():
     options = parser.parse_args()
     return options
 
-def loadRecording(recPath):
+def loadRecording(recPath, shortenRec=None):
     #Load Signal channel data. Have to do this differently depending on which OE version was used to record
     oldOEFiles = [f for f in listdir(recPath) if f.endswith('.continuous')] #Old OE version has .continuous files directly in recording folder
     if oldOEFiles: 
@@ -85,6 +88,9 @@ def loadRecording(recPath):
         segmentDuration = [rec.get_duration(i) for i in range(rec.get_num_segments())]
         print(f'Raw data contains multiple segments with the following time durations (s): {segmentDuration}. Only the longest segment will be spike sorted')
         rec = rec.select_segments(int(np.argmax(segmentDuration)))
+
+    if shortenRec:
+        rec = shortenRec(rec=rec, timeDur=shortenRec)
     return rec
 
 def shortenRec(rec, timeDur):
