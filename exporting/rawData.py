@@ -72,7 +72,7 @@ def loadRecording(recPath):
     oldOEFiles = [f for f in listdir(recPath) if f.endswith('.continuous')] #Old OE version has .continuous files directly in recording folder
     if oldOEFiles: 
         #Read the ephys data (stream names are 'Signals AUX', 'Signals CH', 'Signals ADC')
-        rec = read_openephys(recPath,stream_name='Signals CH')
+        rec = read_openephys(recPath,stream_name='Signals CH') # TODO: Load all streams for export, not just 'Signals CH'
     else:
         rec = read_openephys(recPath)
         # Pull out signal channels (IDs starting with CH)
