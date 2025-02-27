@@ -2,8 +2,8 @@
 # null indicates default value is determined by requestBatch.py
 ---
 export_settings:
-  skip_spike_export: "True"
-  downsampled_rate: "1000"
+  skip_spike_export: True
+  downsampled_rate: 1000
 
 slurm_settings:
   # You probably want to change these

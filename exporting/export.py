@@ -4,6 +4,7 @@ from pathlib import PurePath
 from shutil import move
 from pandas import read_csv
 import yaml
+from sorted import spikes2mat
 from rawData import events2mat, stream2mat
 
 def main():
@@ -14,8 +15,12 @@ def main():
     outputPath = path.join(options['jobFolder'], 'export', outputFolder)
 
     events2mat(dataPath=rec_settings['dataPath'], outputPath=outputPath)
-    stream2mat(dataPath=rec_settings['dataPath'], outputPath=outputPath)
-    # TODO: spikes2Mat(rec_settings['sortPath'],outputPath)
+    stream2mat(
+        dataPath=rec_settings['dataPath'], 
+        outputPath=outputPath, 
+        desiredRate=options['downsampled_rate'])
+    if not options['skip_spike_export']:
+        spikes2mat(sortFolder=rec_settings['sortFolder'], outputPath=outputPath)
     
     if not options['debugWithoutSlurm']: # Move log file to output folder
         logPath = f'{options['jobFolder']}/logs/{options['taskID']}_{options['jobID']}.txt'
