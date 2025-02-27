@@ -3,6 +3,7 @@ from os import environ, path
 from pathlib import PurePath
 from shutil import move
 from pandas import read_csv
+import yaml
 from rawData import events2mat, stream2mat
 
 def main():
@@ -20,6 +21,27 @@ def main():
         logPath = f'{options['jobFolder']}/logs/{options['taskID']}_{options['jobID']}.txt'
         move(logPath, outputPath)
 
+def load_export_settings_from_yaml(yamlFile):
+    with open(yamlFile, 'r') as f:
+        fullYam = yaml.full_load(f)
+    return fullYam.get('export_settings') # returns None if key not found
+
+def get_yaml_settings(jobFolder):
+    ## Load default settings from yaml in this git repository
+    parentDir = path.dirname(path.realpath(__file__))
+    default_yaml = parentDir + '/export_settings.yaml'
+    print("Loading default export settings from", default_yaml)
+    options = load_export_settings_from_yaml(default_yaml)
+            
+    ## Load user settings from job folder and overwrite defaults
+    user_yaml = jobFolder +'/export_settings.yaml'
+    if path.isfile(user_yaml):
+        print("Overwriting default export settings with values from", user_yaml)
+        user_overrides = load_export_settings_from_yaml(user_yaml)
+        if user_overrides:
+            options.update(user_overrides)
+    return options
+
 def parseInputs():
     print('parsing inputs')
     parser = ArgumentParser(description='Spike sort a single recording')
@@ -34,6 +56,8 @@ def parseInputs():
 
     args = parser.parse_args()
     options = vars(args) # Convert to dictionary so additional settings can be added
+    
+    options.update(get_yaml_settings(options['jobFolder']))
 
     if options['debugWithoutSlurm']:
         options['taskID'] = '1'
