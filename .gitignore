@@ -2,3 +2,4 @@
 logs/*
 *.asv
 *.vscode
+*__pycache__
