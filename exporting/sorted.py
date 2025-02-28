@@ -1,22 +1,23 @@
-
-
+from argparse import ArgumentParser
 import pandas as pd
 from spikeinterface.extractors import read_kilosort, read_binary
 from spikeinterface import create_sorting_analyzer
 from probeinterface import read_prb
 
 def main():
-    spikes2mat(sortFolder, outputPath)
+    print('running sorted.py')
+    options = parseInputs()
+    spikes2mat(options.sort_folder, options.export_folder)
 
-def spikes2mat(sortFolder, outputPath):   
-    print('Reading kilosort output from:', sortFolder)
-    sorting = read_kilosort(sortFolder+'/sorter_output',keep_good_only=False)
+def spikes2mat(sort_folder, output_path):   
+    print('Reading kilosort output from:', sort_folder)
+    sorting = read_kilosort(sort_folder+'/sorter_output',keep_good_only=False)
 
-    datPath = sortFolder + '/sorter_output/temp_wh.dat'
+    datPath = sort_folder + '/sorter_output/temp_wh.dat'
     print('Reading binary file:', datPath)
     rec = read_binary(file_paths=datPath, dtype='int16', sampling_frequency=30000.0, num_channels=64) #TODO: get params from params.py
 
-    probe = read_prb(sortFolder+'/sorter_output/probe.prb')
+    probe = read_prb(sort_folder+'/sorter_output/probe.prb')
     print('lodading probe:', probe)
     rec = rec.set_probegroup(probe)
     
@@ -52,11 +53,22 @@ def spikes2mat(sortFolder, outputPath):
     for id in qualityMetrics.index:
         t = sorting.get_unit_spike_train(unit_id=id, return_times=True)
 
-    group = pd.read_csv(sortFolder+'/sorter_output/cluster_group.tsv', sep='\t', header=0)
+    group = pd.read_csv(sort_folder+'/sorter_output/cluster_group.tsv', sep='\t', header=0)
 
-    sorting_analyzer.save_as(folder=sortFolder+'/analyzer', format="binary_folder") #Save the analyzer object
+    sorting_analyzer.save_as(folder=sort_folder+'/analyzer', format="binary_folder") #Save the analyzer object
     raise Exception('breakpoint')
 
-
+def parseInputs():
+    parser = ArgumentParser(description='Export spikes, quality metrics, and waveforms from sorter output')
+    parser.add_argument('--sort_folder', 
+        help='Path to data folder',
+        required=True
+        )
+    parser.add_argument('--export_folder', 
+        help='Path to data folder',
+        required=True
+        )
+    options = parser.parse_args()
+    return options
 if __name__ == "__main__":
     main()

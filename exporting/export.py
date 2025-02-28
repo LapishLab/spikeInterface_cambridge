@@ -20,7 +20,7 @@ def main():
         outputPath=outputPath, 
         desiredRate=options['downsampled_rate'])
     if not options['skip_spike_export']:
-        spikes2mat(sortFolder=rec_settings['sortFolder'], outputPath=outputPath)
+        spikes2mat(sort_folder=rec_settings['sortFolder'], output_path=outputPath)
     
     if not options['debugWithoutSlurm']: # Move log file to output folder
         logPath = f'{options['jobFolder']}/logs/{options['taskID']}_{options['jobID']}.txt'
