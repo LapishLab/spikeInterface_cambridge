@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+import os
 import pandas as pd
 from spikeinterface.extractors import read_kilosort, read_binary
 from spikeinterface import create_sorting_analyzer
@@ -9,15 +10,25 @@ def main():
     options = parseInputs()
     spikes2mat(options.sort_folder, options.export_folder)
 
-def spikes2mat(sort_folder, output_path):   
-    print('Reading kilosort output from:', sort_folder)
-    sorting = read_kilosort(sort_folder+'/sorter_output',keep_good_only=False)
+def spikes2mat(sort_folder, output_path): 
+    probe_folders = [os.path.join(sort_folder, f) for f in os.listdir(sort_folder) if os.path.isdir(os.path.join(sort_folder, f)) and f.startswith("probe")]
+    
 
-    datPath = sort_folder + '/sorter_output/temp_wh.dat'
+    for probe_folder in probe_folders:
+        load_single_probe(probe_folder)
+    
+
+   
+def load_single_probe(probe_folder):
+    sorter_output_folder = probe_folder + '/sorter_output'
+    print('Reading kilosort output from:', sorter_output_folder)
+    sorting = read_kilosort(sorter_output_folder,keep_good_only=False)
+
+    datPath = sorter_output_folder + '/temp_wh.dat'
     print('Reading binary file:', datPath)
     rec = read_binary(file_paths=datPath, dtype='int16', sampling_frequency=30000.0, num_channels=64) #TODO: get params from params.py
 
-    probe = read_prb(sort_folder+'/sorter_output/probe.prb')
+    probe = read_prb(sorter_output_folder+'/probe.prb')
     print('lodading probe:', probe)
     rec = rec.set_probegroup(probe)
     
@@ -53,10 +64,7 @@ def spikes2mat(sort_folder, output_path):
     for id in qualityMetrics.index:
         t = sorting.get_unit_spike_train(unit_id=id, return_times=True)
 
-    group = pd.read_csv(sort_folder+'/sorter_output/cluster_group.tsv', sep='\t', header=0)
-
-    sorting_analyzer.save_as(folder=sort_folder+'/analyzer', format="binary_folder") #Save the analyzer object
-    raise Exception('breakpoint')
+    group = pd.read_csv(sorter_output_folder+'/cluster_group.tsv', sep='\t', header=0)
 
 def parseInputs():
     parser = ArgumentParser(description='Export spikes, quality metrics, and waveforms from sorter output')
