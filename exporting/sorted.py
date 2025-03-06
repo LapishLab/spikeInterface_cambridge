@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from os import listdir, makedirs, path
-import pandas as pd
+from pandas import concat, DataFrame, read_csv
 from spikeinterface.extractors import read_kilosort, read_binary
 from spikeinterface import create_sorting_analyzer
 from probeinterface import read_prb
@@ -21,12 +21,11 @@ def spikes2mat(sort_folder, export_folder):
         probe_dataframe['probe'] = path.basename(probe_folder).strip('probe')
         output_tables.append(probe_dataframe)
     
-    clusters = pd.concat(output_tables)
+    clusters = concat(output_tables)
     clusters.columns = [c.replace(' ', '_') for c in clusters.columns] # Replace any spaces with underscores for MATLAB compatibility
     output = dict()
     output['clusters'] = clusters.to_records(index=False)
     makedirs(export_folder, exist_ok=True)
-    #savemat('/N/project/lapishLabWorkspace/temp/sorted2.mat', data, do_compression=True)
     savemat(export_folder+'/spikes.mat', output, do_compression=True)
     #raise Exception('hacky debug')
 
@@ -67,7 +66,7 @@ def package_sorter_output(probe_folder):
     rec = load_recording(sorter_output_folder)
     sorting = read_kilosort(sorter_output_folder,keep_good_only=False)
     
-    phy_labels = pd.read_csv(sorter_output_folder+'/cluster_group.tsv', sep='\t', header=0)
+    phy_labels = read_csv(sorter_output_folder+'/cluster_group.tsv', sep='\t', header=0)
     noise_ids = phy_labels[phy_labels['group'] == 'noise']['cluster_id'].to_list()
     sorting = sorting.remove_units(noise_ids)
     sorting = remove_excess_spikes(sorting=sorting, recording=rec)
@@ -103,7 +102,7 @@ def package_sorter_output(probe_folder):
         unit['location'] = unit_locations[ind,:]
         unit.update(qualityMetrics.iloc[ind].to_dict()) 
         unit_list.append(unit)
-    return pd.DataFrame(unit_list)
+    return DataFrame(unit_list)
 
 def parseInputs():
     parser = ArgumentParser(description='Export spikes, quality metrics, and waveforms from sorter output')
