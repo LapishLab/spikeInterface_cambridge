@@ -3,19 +3,21 @@ import sys
 import subprocess
 import time
 import pandas as pd
+from os import remove
 
 jobFolder = sys.argv[1]
 jobID = sys.argv[2]
 
 def main():
-    statusFile = f'{jobFolder}/{jobID}_status.csv'
+    status_file = f'status_{jobFolder}/{jobID}.csv'
     waitTime = 5*60 # 5 minutes
     time.sleep(10) # wait a little bit to give time for Slurm to register the job 
-    status = pollStatus(statusFile, waitTime)
-    reportFile = f'{jobFolder}/{jobID}_report.csv'
-    saveReport(reportFile, status)
+    status = pollStatus(status_file, waitTime)
+    report_file = f'report_{jobFolder}/{jobID}.csv'
+    saveReport(report_file, status)
     import cleanup
-    cleanup.cleanup(statusFile)
+    cleanup.cleanup(report_file)
+    remove(status_file)
 
 def pollStatus(statusFile, waitTime):
     cmd=f'sacct --jobs={jobID} -X --format=JobID,State,CPUTime,TimeLimit,ExitCode'

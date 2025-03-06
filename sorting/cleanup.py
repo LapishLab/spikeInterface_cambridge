@@ -3,12 +3,12 @@ import sys
 import shutil
 import pandas as pd
 
-def cleanup(status_csv, dry_run=False):
-    df = pd.read_csv(status_csv)
-    incomplete_jobs = df[df['State'] != 'COMPLETED']['JobID'].tolist()
+def cleanup(report_file, dry_run=False):
+    df = pd.read_csv(report_file)
+    incomplete_jobs = df['COMPLETED' in df['State']]['JobID'].tolist()
 
     if incomplete_jobs:
-        job_folder = os.path.dirname(status_csv)
+        job_folder = os.path.dirname(report_file)
         move_incomplete_results(incomplete_jobs, job_folder, dry_run)
         make_incomplete_recordingSettingsCSV(incomplete_jobs, job_folder)
 
