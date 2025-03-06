@@ -1,43 +1,78 @@
 from argparse import ArgumentParser
-import os
+from os import listdir, makedirs, path
 import pandas as pd
 from spikeinterface.extractors import read_kilosort, read_binary
 from spikeinterface import create_sorting_analyzer
 from probeinterface import read_prb
+from scipy.io import savemat
+from spikeinterface.curation import remove_excess_spikes
 
 def main():
     print('running sorted.py')
     options = parseInputs()
     spikes2mat(options.sort_folder, options.export_folder)
 
-def spikes2mat(sort_folder, output_path): 
-    probe_folders = [os.path.join(sort_folder, f) for f in os.listdir(sort_folder) if os.path.isdir(os.path.join(sort_folder, f)) and f.startswith("probe")]
+def spikes2mat(sort_folder, export_folder): 
+    probe_folders = [path.join(sort_folder, f) for f in listdir(sort_folder) if path.isdir(path.join(sort_folder, f)) and f.startswith("probe")]
     
-
+    output_tables = []
     for probe_folder in probe_folders:
-        load_single_probe(probe_folder)
+        probe_dataframe = package_sorter_output(probe_folder)
+        probe_dataframe['probe'] = path.basename(probe_folder).strip('probe')
+        output_tables.append(probe_dataframe)
     
+    clusters = pd.concat(output_tables)
+    clusters.columns = [c.replace(' ', '_') for c in clusters.columns] # Replace any spaces with underscores for MATLAB compatibility
+    output = dict()
+    output['clusters'] = clusters.to_records(index=False)
+    makedirs(export_folder, exist_ok=True)
+    #savemat('/N/project/lapishLabWorkspace/temp/sorted2.mat', data, do_compression=True)
+    savemat(export_folder+'/spikes.mat', output, do_compression=True)
+    #raise Exception('hacky debug')
 
-   
-def load_single_probe(probe_folder):
-    sorter_output_folder = probe_folder + '/sorter_output'
-    print('Reading kilosort output from:', sorter_output_folder)
-    sorting = read_kilosort(sorter_output_folder,keep_good_only=False)
+def read_sorter_params(params_path): # I could
+    params = dict()
+    f = open(params_path, "r")
+    for line in f:
+        if '=' in line:
+            (key, val) = line.split('=',maxsplit=1)
+            params[key.strip()] = val.strip()
+        else:
+            print(f'Skipping: {line} in {params_path}. Cannot split by "=" deliminator')
+    f.close()
 
+    params['n_channels_dat'] = int(params['n_channels_dat'])
+    params['sample_rate'] = float(params['sample_rate'])
+    params['dtype'] = params['dtype'].strip("'")
+    return params
+
+def load_recording(sorter_output_folder):
+    params_path = sorter_output_folder + '/params.py'
+    params = read_sorter_params(params_path)
     datPath = sorter_output_folder + '/temp_wh.dat'
     print('Reading binary file:', datPath)
-    rec = read_binary(file_paths=datPath, dtype='int16', sampling_frequency=30000.0, num_channels=64) #TODO: get params from params.py
-
+    rec = read_binary(
+        file_paths=datPath,
+        dtype=params['dtype'], 
+        sampling_frequency=params['sample_rate'], 
+        num_channels=params['n_channels_dat'])
     probe = read_prb(sorter_output_folder+'/probe.prb')
     print('lodading probe:', probe)
     rec = rec.set_probegroup(probe)
+    return rec
+
+def package_sorter_output(probe_folder):
+    sorter_output_folder = probe_folder + '/sorter_output'
+    print('Reading kilosort output from:', sorter_output_folder)
+    rec = load_recording(sorter_output_folder)
+    sorting = read_kilosort(sorter_output_folder,keep_good_only=False)
     
-    # from spikeinterface.curation import remove_excess_spikes
-    # sorting = remove_excess_spikes(sorting=sorting, recording=rec)
+    phy_labels = pd.read_csv(sorter_output_folder+'/cluster_group.tsv', sep='\t', header=0)
+    noise_ids = phy_labels[phy_labels['group'] == 'noise']['cluster_id'].to_list()
+    sorting = sorting.remove_units(noise_ids)
+    sorting = remove_excess_spikes(sorting=sorting, recording=rec)
 
-    print('Creating sorting analyzer')
-    sorting_analyzer = create_sorting_analyzer(sorting=sorting, recording=rec, format="memory", n_jobs=8)
-
+    sorting_analyzer = create_sorting_analyzer(sorting=sorting, recording=rec, format="memory", n_jobs=8) # For some reason this errors only when using python debugger with at least 1 breakpoint enabled.
     job_kwargs = dict(n_jobs=8, progress_bar=False)
     print('Computing random spikes')
     sorting_analyzer.compute("random_spikes",  **job_kwargs)
@@ -56,15 +91,19 @@ def load_single_probe(probe_folder):
 
     templates = sorting_analyzer.get_extension('templates').get_data() # clusters x time x channel
     qualityMetrics = sorting_analyzer.get_extension('quality_metrics').get_data()
-
     unit_locations = sorting_analyzer.compute(input="unit_locations", method="monopolar_triangulation").get_data()
- 
-
-
-    for id in qualityMetrics.index:
-        t = sorting.get_unit_spike_train(unit_id=id, return_times=True)
-
-    group = pd.read_csv(sorter_output_folder+'/cluster_group.tsv', sep='\t', header=0)
+    
+    unit_list = []
+    for ind, id in enumerate(sorting_analyzer.unit_ids):
+        unit = dict() # Combine all data types into a single dictionary
+        unit['cluster_id'] = id
+        unit['phy_label'] = phy_labels.loc[phy_labels['cluster_id']==id, 'group'].iloc[0]
+        unit['spike_times'] = sorting.get_unit_spike_train(unit_id=id, return_times=True)
+        unit['waveform'] = templates[ind,:,:]
+        unit['location'] = unit_locations[ind,:]
+        unit.update(qualityMetrics.iloc[ind].to_dict()) 
+        unit_list.append(unit)
+    return pd.DataFrame(unit_list)
 
 def parseInputs():
     parser = ArgumentParser(description='Export spikes, quality metrics, and waveforms from sorter output')
