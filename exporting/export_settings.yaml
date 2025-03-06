@@ -2,7 +2,9 @@
 # null indicates default value is determined by requestBatch.py
 ---
 export_settings:
-  skip_spike_export: True
+  skip_spike_export: False
+  skip_event_export : False
+  skip_stream_export : False
   downsampled_rate: 1000
 
 slurm_settings:
