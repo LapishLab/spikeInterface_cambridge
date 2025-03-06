@@ -69,6 +69,6 @@ if __name__ == "__main__":
         print("Usage: python cleanup.py <path_to_csv> [--dry-run]")
         sys.exit(1)
     
-    status_csv = sys.argv[1]
+    report_file = sys.argv[1]
     dry_run = '--dry-run' in sys.argv
-    cleanup(status_csv, dry_run)
+    cleanup(report_file, dry_run)
