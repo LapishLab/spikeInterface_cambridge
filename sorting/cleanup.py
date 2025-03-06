@@ -5,7 +5,7 @@ import pandas as pd
 
 def cleanup(report_file, dry_run=False):
     df = pd.read_csv(report_file)
-    incomplete_jobs = df['COMPLETED' in df['State']]['JobID'].tolist()
+    incomplete_jobs = df['COMPLETED' in df['State']]['Array Job ID'].tolist()
 
     if incomplete_jobs:
         job_folder = os.path.dirname(report_file)
