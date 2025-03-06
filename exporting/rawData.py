@@ -65,15 +65,28 @@ def getChannelProperties(stream):
 
 def events2mat(dataPath, outputPath):
     print(f'Loading event data from {dataPath}')
+    if is_legacy_OE_recording(dataPath):
+        events = load_legacy_events(dataPath)
+    else: 
+        events = load_current_events(dataPath)
+    makedirs(outputPath, exist_ok=True)
+    event_mat = outputPath+'/events.mat'
+    print(f"Saving event data to {event_mat}")
+    savemat(event_mat, events, do_compression=True)
+
+def load_current_events(dataPath):
     eventExtractor = read_openephys_event(dataPath) #TODO: add support for old OE version.
     events = dict()
     for id in eventExtractor.channel_ids:
         newID = id.replace(" ", "_") #MATLAB doesn't like spaces in struct field names
         events[newID] = eventExtractor.get_events(id)
-    makedirs(outputPath, exist_ok=True)
-    event_mat = outputPath+'/events.mat'
-    print(f"Saving event data to {event_mat}")
-    savemat(event_mat, events, do_compression=True)
+    return events
+
+def load_legacy_events(dataPath):
+    from open_ephys.analysis import Session
+    session = Session(dataPath)
+    return session.recordings[0].events
+
 
 def parseInputs():
     parser = ArgumentParser(description='Spike sort a single recording')
@@ -94,11 +107,16 @@ def parseInputs():
     options = parser.parse_args()
     return options
 
+def is_legacy_OE_recording(recPath):
+    rec_contents = listdir(recPath)
+    for f in rec_contents:
+        if f.endswith('.continuous'):
+            return True
+    return None
+
 def loadRecording(recPath):
     print(f'Loading stream info from {recPath}')
-    #Load Signal channel data. Have to do this differently depending on which OE version was used to record
-    oldOEFiles = [f for f in listdir(recPath) if f.endswith('.continuous')] #Old OE version has .continuous files directly in recording folder
-    if oldOEFiles: 
+    if is_legacy_OE_recording(recPath): 
         #Read the ephys data (stream names are 'Signals AUX', 'Signals CH', 'Signals ADC')
         rec = read_openephys(recPath,stream_name='Signals CH') # TODO: Load all streams for export, not just 'Signals CH'
     else:
