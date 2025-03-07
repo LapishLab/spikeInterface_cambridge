@@ -27,11 +27,8 @@ def stream2mat(dataPath, outputPath, desiredRate=1000):
 
     data = dict() # scipy.io.savemat converts dict to MATLAB struct
     data['time'] = stream.get_times()
-    start_time = time()
     #data['traces'] = stream.get_traces() # This never finishes when debugging long recordings, so I'm using the custom function below.
     data['traces'] = getTraces(stream)
-    stop_time = time()
-    print(f"Time to get traces: {stop_time-start_time}")
     data['channels'] = getChannelProperties(stream)
     makedirs(outputPath, exist_ok=True)
     stream_mat = outputPath+'/stream.mat'
