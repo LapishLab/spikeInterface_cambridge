@@ -68,6 +68,9 @@ def package_sorter_output(probe_folder):
     sorting = read_kilosort(sorter_output_folder,keep_good_only=False)
     
     phy_labels = read_csv(sorter_output_folder+'/cluster_group.tsv', sep='\t', header=0)
+    if 'KSLabel' in phy_labels.columns:
+        print(f"Warning: this dataset hasn't been manually curated. Using Kilosort labels")
+        phy_labels.rename(columns={'KSLabel': 'group'}, inplace=True)  
     noise_ids = phy_labels[phy_labels['group'] == 'noise']['cluster_id'].to_list()
     sorting = sorting.remove_units(noise_ids)
     sorting = remove_excess_spikes(sorting=sorting, recording=rec)
