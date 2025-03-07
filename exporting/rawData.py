@@ -67,15 +67,17 @@ def events2mat(dataPath, outputPath):
     print(f'Loading event data from {dataPath}')
     if is_legacy_OE_recording(dataPath):
         events = load_legacy_events(dataPath)
+        events['format'] = 'legacy_OE'
     else: 
         events = load_current_events(dataPath)
+        events['format'] = 'binary'
     makedirs(outputPath, exist_ok=True)
     event_mat = outputPath+'/events.mat'
     print(f"Saving event data to {event_mat}")
     savemat(event_mat, events, do_compression=True)
 
 def load_current_events(dataPath):
-    eventExtractor = read_openephys_event(dataPath) #TODO: add support for old OE version.
+    eventExtractor = read_openephys_event(dataPath)
     events = dict()
     for id in eventExtractor.channel_ids:
         newID = id.replace(" ", "_") #MATLAB doesn't like spaces in struct field names
@@ -85,7 +87,9 @@ def load_current_events(dataPath):
 def load_legacy_events(dataPath):
     from open_ephys.analysis import Session
     session = Session(dataPath)
-    return session.recordings[0].events
+    events = dict()
+    events['data'] = session.recordings[0].events.to_records()
+    return events
 
 
 def parseInputs():
