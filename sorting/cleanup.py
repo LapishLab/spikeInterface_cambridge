@@ -14,25 +14,28 @@ def cleanup(report_file, output_folder, dry_run=False):
     rec_settings['state'] = ''
     for (i, row) in report.iterrows():
         id = row['Array Job ID'].strip()
-        matchingFolder =  [x for x in output_subfolders if x.endswith(id)]
-        if len(matchingFolder)>1:
-            print(f"more than 1 matching folder found for {id}, skipping")
-            continue
-        elif len(matchingFolder)==0:
-            print(f'no matching folders found for {id}')
-            continue
+        rec_ind = int(id.split('_')[1]) - 1
+        if 'COMPLETED' in row['State']:
+            rec_settings.loc[rec_settings.index[rec_ind], 'state'] = 'COMPLETED'
         else:
+            rec_settings.loc[rec_settings.index[rec_ind], 'state'] = 'FAILED'
+        matchingFolder =  [x for x in output_subfolders if x.endswith(id)]
+        if len(matchingFolder)==1:
             output_path = f'{output_folder}/{matchingFolder[0]}'
-            rec_ind = int(id.split('_')[1]) - 1
-            if 'COMPLETED' in row['State']:
-                rec_settings.loc[rec_settings.index[rec_ind], 'state'] = 'COMPLETED'
-            else:
-                rec_settings.loc[rec_settings.index[rec_ind], 'state'] = 'FAILED'
+            if 'COMPLETED' not in row['State']:
                 failed_output_path = f'{output_folder}/failed/{matchingFolder[0]}'
                 makedirs(f'{output_folder}/failed/', exist_ok=True)
                 move(output_path,failed_output_path)
                 output_path = failed_output_path
             rec_settings.loc[rec_settings.index[rec_ind], 'output_path'] = output_path
+        elif len(matchingFolder)>1:
+            msg = f'ERROR: Multiple matches for {id} in {output_folder}'
+            print(msg)
+            rec_settings.loc[rec_settings.index[rec_ind], 'output_path'] = msg
+        elif len(matchingFolder)==0:
+            msg = f'ERROR: No matches for {id} in {output_folder}'
+            print(msg)
+            rec_settings.loc[rec_settings.index[rec_ind], 'output_path'] = msg
     job_num = id.split('_')[0].strip()
     completed = rec_settings[rec_settings['state'] == 'COMPLETED']
     if not completed.empty:
