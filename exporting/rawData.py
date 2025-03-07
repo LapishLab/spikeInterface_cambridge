@@ -88,12 +88,21 @@ def load_current_events(dataPath):
 def load_legacy_events(dataPath):
     from open_ephys.analysis import Session
     session = Session(dataPath)
+    samplerate = get_samplerate_from_xml(dataPath+'/Continuous_Data.openephys')
+    df = session.recordings[0].events
+    df['timestamp'] = df['timestamp'] / samplerate
     events = dict()
-    events['data'] = session.recordings[0].events.to_records()
+    events['data'] = df.to_records()
     events['format'] = 'legacy_OE'
     return events
 
-
+def get_samplerate_from_xml(file_path):
+    import xml.etree.ElementTree as ET
+    root = ET.parse(file_path).getroot()
+    for elem in root.iter():
+        if 'samplerate' in elem.attrib:
+            return float(elem.attrib['samplerate'])
+    raise ValueError("samplerate not found in the XML file")
 def parseInputs():
     parser = ArgumentParser(description='Spike sort a single recording')
     parser.add_argument('--dataFolder', 
