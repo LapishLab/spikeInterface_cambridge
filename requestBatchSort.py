@@ -132,10 +132,7 @@ def startStatusUpdater(ShellResp, jobFolder):
     output_path = jobFolder + '/results'
 
     # Run status script in background
-    print("Running status script in background")
-    print(statusPy)
-    print(jobFolder)
-    print(SlurmID)
+    print(f"Running status script in background for job {SlurmID}")
     cmd = f'nohup python {statusPy} {jobFolder} {SlurmID} {output_path} > /dev/null 2>&1 &' #redirect output and error to /dev/null to avoid nohup.out clutter
     subprocess.run(cmd, shell=True)
 
