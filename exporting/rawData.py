@@ -22,14 +22,19 @@ def main():
     )
 
 def stream2mat(dataPath, outputPath, desiredRate=1000):
-    stream = loadRecording(recPath=dataPath)
-    stream = resample(stream,desiredRate)
+    streams = load_streams(recPath=dataPath)
+    streams = [resample(s, desiredRate) for s in streams]
 
     data = dict() # scipy.io.savemat converts dict to MATLAB struct
-    data['time'] = stream.get_times()
-    #data['traces'] = stream.get_traces() # This never finishes when debugging long recordings, so I'm using the custom function below.
-    data['traces'] = getTraces(stream)
-    data['channels'] = getChannelProperties(stream)
+    data['time'] = streams[0].get_times()
+    data['traces'] = getTraces(streams[0])
+    data['channels'] = getChannelProperties(streams[0])
+    
+    if len(streams)>1:
+        for s in streams[1:]:
+            data['traces'] = np.concatenate((data['traces'],getTraces(s)), axis=1)
+            data['channels'] = np.concatenate((data['channels'],getChannelProperties(s)), axis=0)
+
     makedirs(outputPath, exist_ok=True)
     stream_mat = outputPath+'/stream.mat'
     print(f"Saving stream data to {stream_mat}")
@@ -110,26 +115,32 @@ def parseInputs():
 
 def is_legacy_OE_recording(recPath):
     rec_contents = listdir(recPath)
-    for f in rec_contents:
-        if f.endswith('.continuous'):
-            return True
-    return None
+    return [f for f in rec_contents if f.endswith('.continuous')]
 
-def loadRecording(recPath):
+def load_streams(recPath):
     print(f'Loading stream info from {recPath}')
-    if is_legacy_OE_recording(recPath): 
-        #Read the ephys data (stream names are 'Signals AUX', 'Signals CH', 'Signals ADC')
-        rec = read_openephys(recPath,stream_name='Signals CH') # TODO: Load all streams for export, not just 'Signals CH'
+    legacy_files = is_legacy_OE_recording(recPath)
+    if legacy_files:
+        streams = []
+        # This seems super hacky, but SI doesn't seem to give any way to check what streams are present in the recording.
+        has_CH = [f for f in legacy_files if '_CH' in f] 
+        has_AUX = [f for f in legacy_files if '_AUX' in f]
+        has_ADC = [f for f in legacy_files if '_ADC' in f]
+        if has_CH:
+            streams.append(read_openephys(recPath,stream_name='Signals CH'))
+        if has_AUX:
+            streams.append(read_openephys(recPath,stream_name='Signals AUX'))
+        if has_ADC:
+            streams.append(read_openephys(recPath,stream_name='Signals ADC'))
     else:
         rec = read_openephys(recPath)
-
-    # Check if recording has multiple segments
-    if rec.get_num_segments() > 1: # TODO: handle multiple segments more flexibly
-        segmentDuration = [rec.get_duration(i) for i in range(rec.get_num_segments())]
-        print(f'Raw data contains multiple segments with the following time durations (s): {segmentDuration}. Only the longest segment will be exported') 
-        rec = rec.select_segments(int(np.argmax(segmentDuration)))
-    #rec=shortenRec(rec, timeDur=600) #TODO: remove this line after testing
-    return rec
+        # Check if recording has multiple segments
+        if rec.get_num_segments() > 1: # TODO: handle multiple segments more flexibly
+            segmentDuration = [rec.get_duration(i) for i in range(rec.get_num_segments())]
+            print(f'Raw data contains multiple segments with the following time durations (s): {segmentDuration}. Only the longest segment will be exported') 
+            rec = rec.select_segments(int(np.argmax(segmentDuration)))
+        streams = [rec]
+    return streams
 
 def shortenRec(rec, timeDur):
     tstart = rec._get_t_starts()
