@@ -7,16 +7,17 @@ from os import remove
 
 jobFolder = sys.argv[1]
 jobID = sys.argv[2]
+output_folder = sys.argv[3]
 
 def main():
-    status_file = f'status_{jobFolder}/{jobID}.csv'
+    status_file = f'{jobFolder}/status_{jobID}.csv'
     waitTime = 5*60 # 5 minutes
     time.sleep(10) # wait a little bit to give time for Slurm to register the job 
     status = pollStatus(status_file, waitTime)
-    report_file = f'report_{jobFolder}/{jobID}.csv'
+    report_file = f'{jobFolder}/report_{jobID}.csv'
     saveReport(report_file, status)
     import cleanup
-    cleanup.cleanup(report_file)
+    cleanup.cleanup(report_file, output_folder)
     remove(status_file)
 
 def pollStatus(statusFile, waitTime):

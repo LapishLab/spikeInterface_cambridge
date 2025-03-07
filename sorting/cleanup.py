@@ -1,74 +1,48 @@
-import os
+from os import makedirs, listdir, path
 import sys
-import shutil
+from shutil import move
 import pandas as pd
 
-def cleanup(report_file, dry_run=False):
-    df = pd.read_csv(report_file)
-    incomplete_jobs = df['COMPLETED' in df['State']]['Array Job ID'].tolist()
+def cleanup(report_file, output_folder, dry_run=False):
+    job_folder = path.dirname(report_file)
+    rec_setting_path = job_folder + '/recordingSettings.csv'
+    rec_settings = pd.read_csv(rec_setting_path)
+    output_subfolders = listdir(output_folder)
+    report = pd.read_csv(report_file)
 
-    if incomplete_jobs:
-        job_folder = os.path.dirname(report_file)
-        move_incomplete_results(incomplete_jobs, job_folder, dry_run)
-        make_incomplete_recordingSettingsCSV(incomplete_jobs, job_folder)
-
-def move_incomplete_results(incomplete_jobs, job_folder, dry_run=False):
-    results_dir = os.path.join(job_folder, 'results')
-    failed_dir = os.path.join(job_folder, 'failed')
-    if not os.path.exists(failed_dir):
-        os.makedirs(failed_dir)
-    result_folders = os.listdir(results_dir)
-    for job_id in incomplete_jobs:
-        matchingFolder =  [x for x in result_folders if x.endswith(job_id)]
+    rec_settings['output_path'] = ''
+    rec_settings['state'] = ''
+    for (i, row) in report.iterrows():
+        id = row['Array Job ID'].strip()
+        matchingFolder =  [x for x in output_subfolders if x.endswith(id)]
         if len(matchingFolder)>1:
-            print("more than 1 matching folder found for {job_id}, skipping")
+            print(f"more than 1 matching folder found for {id}, skipping")
             continue
         elif len(matchingFolder)==0:
-            print(f'no matching folders found for {job_id}')
+            print(f'no matching folders found for {id}')
             continue
         else:
-            folder_name = matchingFolder[0]
+            output_path = f'{output_folder}/{matchingFolder[0]}'
+            rec_ind = int(id.split('_')[1]) - 1
+            if 'COMPLETED' in row['State']:
+                rec_settings.loc[rec_settings.index[rec_ind], 'state'] = 'COMPLETED'
+            else:
+                rec_settings.loc[rec_settings.index[rec_ind], 'state'] = 'FAILED'
+                failed_output_path = f'{output_folder}/failed/{matchingFolder[0]}'
+                makedirs(f'{output_folder}/failed/', exist_ok=True)
+                move(output_path,failed_output_path)
+                output_path = failed_output_path
+            rec_settings.loc[rec_settings.index[rec_ind], 'output_path'] = output_path
+    job_num = id.split('_')[0].strip()
+    completed = rec_settings[rec_settings['state'] == 'COMPLETED']
+    if not completed.empty:
+        completed.to_csv(f'{job_folder}/recordingSettings_completed_{job_num}.csv', index=False)
+    failed = rec_settings[rec_settings['state'] == 'FAILED']
+    if not failed.empty:
+        failed.to_csv(f'{job_folder}/recordingSettings_failed_{job_num}.csv', index=False)
+        
 
-        src_folder = os.path.join(results_dir, folder_name)
-        dest_folder = os.path.join(failed_dir, folder_name)
-        moveMessage(src_folder,dest_folder)
-    
-        if dry_run:
-            print('Dry-run, no files were actually moved')
-        else:
-            shutil.move(src_folder, dest_folder)
-
-def make_incomplete_recordingSettingsCSV(incomplete_jobs, job_folder,dry_run=False):
-    badInds = [int(j.split('_')[1])-1 for j in incomplete_jobs]
-    recordingSettingsCSV = os.path.join(job_folder, 'recordingSettings.csv')
-    df = pd.read_csv(recordingSettingsCSV)
-    need_rerun = df.iloc[badInds]
-    fname = f'recordingSettings_failed_{incomplete_jobs[0].split('_')[0]}.csv'
-    fname = os.path.join(job_folder,fname)
-
-    print('The follow job settings:')
-    print(need_rerun)
-    print('Will be written to:')
-    print(fname)
-    if dry_run:
-        print(f'Dry-Run: CSV file not created')
-    else:
-        need_rerun.to_csv(fname, index=False)
-
-def moveMessage(src_folder,dest_folder):
-    print()
-    print('Moving:')
-    print(src_folder)
-    print('to:')
-    print(dest_folder)
-    print()
-
-
-if __name__ == "__main__":
-    if len(sys.argv) < 2 or len(sys.argv) > 3:
-        print("Usage: python cleanup.py <path_to_csv> [--dry-run]")
-        sys.exit(1)
-    
+if __name__ == "__main__":    
     report_file = sys.argv[1]
-    dry_run = '--dry-run' in sys.argv
-    cleanup(report_file, dry_run)
+    output_folder = sys.argv[2]
+    cleanup(report_file, output_folder)

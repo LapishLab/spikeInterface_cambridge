@@ -129,9 +129,14 @@ def startStatusUpdater(ShellResp, jobFolder):
     ## get path to status script
     parentDir = path.dirname(path.realpath(__file__))
     statusPy = parentDir + "/sorting/status.py"
+    output_path = jobFolder + '/results'
 
     # Run status script in background
-    cmd = f'nohup python {statusPy} {jobFolder} {SlurmID} > /dev/null 2>&1 &' #redirect output and error to /dev/null to avoid nohup.out clutter
+    print("Running status script in background")
+    print(statusPy)
+    print(jobFolder)
+    print(SlurmID)
+    cmd = f'nohup python {statusPy} {jobFolder} {SlurmID} {output_path} > /dev/null 2>&1 &' #redirect output and error to /dev/null to avoid nohup.out clutter
     subprocess.run(cmd, shell=True)
 
 if __name__ == "__main__":
