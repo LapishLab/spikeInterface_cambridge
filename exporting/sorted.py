@@ -17,6 +17,7 @@ def spikes2mat(sort_folder, export_folder):
     
     output_tables = []
     for probe_folder in probe_folders:
+        print(f'Loading spike info from {probe_folder}')
         probe_dataframe = package_sorter_output(probe_folder)
         probe_dataframe['probe'] = path.basename(probe_folder).strip('probe')
         output_tables.append(probe_dataframe)
@@ -56,7 +57,7 @@ def load_recording(sorter_output_folder):
         sampling_frequency=params['sample_rate'], 
         num_channels=params['n_channels_dat'])
     probe = read_prb(sorter_output_folder+'/probe.prb')
-    print('lodading probe:', probe)
+    print('loading probe:', probe)
     rec = rec.set_probegroup(probe)
     return rec
 
