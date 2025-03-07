@@ -69,10 +69,8 @@ def events2mat(dataPath, outputPath):
     print(f'Loading event data from {dataPath}')
     if is_legacy_OE_recording(dataPath):
         events = load_legacy_events(dataPath)
-        events['format'] = 'legacy_OE'
     else: 
         events = load_current_events(dataPath)
-        events['format'] = 'binary'
     makedirs(outputPath, exist_ok=True)
     event_mat = outputPath+'/events.mat'
     print(f"Saving event data to {event_mat}")
@@ -84,6 +82,7 @@ def load_current_events(dataPath):
     for id in eventExtractor.channel_ids:
         newID = id.replace(" ", "_") #MATLAB doesn't like spaces in struct field names
         events[newID] = eventExtractor.get_events(id)
+    events['format'] = 'binary'
     return events
 
 def load_legacy_events(dataPath):
@@ -91,6 +90,7 @@ def load_legacy_events(dataPath):
     session = Session(dataPath)
     events = dict()
     events['data'] = session.recordings[0].events.to_records()
+    events['format'] = 'legacy_OE'
     return events
 
 
