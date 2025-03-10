@@ -14,7 +14,8 @@ def main():
 
 def spikes2mat(sort_folder, export_folder): 
     probe_folders = [path.join(sort_folder, f) for f in listdir(sort_folder) if path.isdir(path.join(sort_folder, f)) and f.startswith("probe")]
-    
+    if len(probe_folders) == 0:
+        raise(f'No probe folders found in {sort_folder}')
     output_tables = []
     for probe_folder in probe_folders:
         print(f'Loading spike info from {probe_folder}')
