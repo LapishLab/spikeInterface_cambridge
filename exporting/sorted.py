@@ -12,7 +12,7 @@ def main():
     options = parseInputs()
     spikes2mat(options.sort_folder, options.export_folder)
 
-def spikes2mat(sort_folder, export_folder): 
+def spikes2mat(sort_folder, export_folder, time_offset=0): 
     probe_folders = [path.join(sort_folder, f) for f in listdir(sort_folder) if path.isdir(path.join(sort_folder, f)) and f.startswith("probe")]
     if len(probe_folders) == 0:
         raise(f'No probe folders found in {sort_folder}')
@@ -21,6 +21,7 @@ def spikes2mat(sort_folder, export_folder):
         print(f'Loading spike info from {probe_folder}')
         probe_dataframe = package_sorter_output(probe_folder)
         probe_dataframe['probe'] = path.basename(probe_folder).strip('probe')
+        probe_dataframe['spike_times'] =+ time_offset
         output_tables.append(probe_dataframe)
     
     clusters = concat(output_tables)

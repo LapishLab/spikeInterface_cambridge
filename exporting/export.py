@@ -5,7 +5,7 @@ from shutil import move
 from pandas import read_csv
 import yaml
 from sorted import spikes2mat
-from rawData import events2mat, stream2mat
+from rawData import events2mat, stream2mat, load_streams
 
 def main():
     options = parseInputs()
@@ -22,7 +22,8 @@ def main():
             outputPath=outputPath, 
             desiredRate=options['downsampled_rate'])
     if not options['skip_spike_export']:
-        spikes2mat(sort_folder=rec_settings['sort_folder'], export_folder=outputPath)
+        time_offset = load_streams(rec_settings['dataPath'])[0].get_time_info()['t_start']
+        spikes2mat(sort_folder=rec_settings['sort_folder'], export_folder=outputPath, time_offset=time_offset)
     
     if not options['debugWithoutSlurm']: # Move log file to output folder
         logPath = f'{options['jobFolder']}/logs/{options['taskID']}_{options['jobID']}.txt'
