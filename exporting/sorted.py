@@ -98,10 +98,13 @@ def package_sorter_output(probe_folder):
     sorting_analyzer.compute("spike_amplitudes", **job_kwargs)
     print('Computing quality metrics')
     sorting_analyzer.compute("quality_metrics", skip_pc_metrics=False,  **job_kwargs)
-
+    print('Computing unit locations')
+    sorting_analyzer.compute("unit_locations", method="monopolar_triangulation",  **job_kwargs)
+  
+    print('Pulling import data and combining in single dictionary')
     templates = sorting_analyzer.get_extension('templates').get_data() # clusters x time x channel
     qualityMetrics = sorting_analyzer.get_extension('quality_metrics').get_data()
-    unit_locations = sorting_analyzer.compute(input="unit_locations", method="monopolar_triangulation").get_data()
+    unit_locations = sorting_analyzer.get_extension("unit_locations").get_data()
     
     unit_list = []
     for ind, id in enumerate(sorting_analyzer.unit_ids):
