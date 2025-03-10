@@ -24,6 +24,7 @@ def spikes2mat(sort_folder, export_folder):
         output_tables.append(probe_dataframe)
     
     clusters = concat(output_tables)
+    clusters.replace({None: float('nan')}, inplace=True)
     clusters.columns = [c.replace(' ', '_') for c in clusters.columns] # Replace any spaces with underscores for MATLAB compatibility
     output = dict()
     output['clusters'] = clusters.to_records(index=False)
