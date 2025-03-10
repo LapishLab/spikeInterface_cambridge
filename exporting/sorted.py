@@ -63,10 +63,7 @@ def load_recording(sorter_output_folder):
     rec = rec.set_probegroup(probe)
     return rec
 
-def package_sorter_output(probe_folder):
-    sorter_output_folder = probe_folder + '/sorter_output'
-    print('Reading kilosort output from:', sorter_output_folder)
-    rec = load_recording(sorter_output_folder)
+def load_sorting(sorter_output_folder):
     sorting = read_kilosort(sorter_output_folder,keep_good_only=False)
     
     phy_labels = read_csv(sorter_output_folder+'/cluster_group.tsv', sep='\t', header=0)
@@ -75,6 +72,13 @@ def package_sorter_output(probe_folder):
         phy_labels.rename(columns={'KSLabel': 'group'}, inplace=True)  
     noise_ids = phy_labels[phy_labels['group'] == 'noise']['cluster_id'].to_list()
     sorting = sorting.remove_units(noise_ids)
+    return (sorting, phy_labels)
+
+def package_sorter_output(probe_folder):
+    sorter_output_folder = probe_folder + '/sorter_output'
+    print('Reading kilosort output from:', sorter_output_folder)
+    rec = load_recording(sorter_output_folder)
+    (sorting, phy_labels) = load_sorting(sorter_output_folder)
     sorting = remove_excess_spikes(sorting=sorting, recording=rec)
 
     sorting_analyzer = create_sorting_analyzer(sorting=sorting, recording=rec, format="memory", n_jobs=8) # For some reason this errors only when using python debugger with at least 1 breakpoint enabled.
