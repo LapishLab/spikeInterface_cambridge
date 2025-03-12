@@ -115,30 +115,6 @@ def update_legacy_event_format(event_dataframe, dataPath):
     event_dataframe['timestamp'] = event_dataframe['timestamp'] / samplerate
     return event_dataframe
 
-def load_current_events(dataPath):
-    from open_ephys.analysis import Session
-    session = Session(dataPath)
-    rec_node = session.recordnodes[0]
-    rec = rec_node.recordings[0]
-    
-    df = rec.events
-    events = dict()
-    events['data'] = df.to_records()
-    events['info'] = rec.info['events']
-    events['format'] = rec.format
-    return events
-
-def load_legacy_events(dataPath):
-    from legacy_open_ephys.analysis import Session
-    session = Session(dataPath)
-    samplerate = get_samplerate_from_xml(dataPath+'/Continuous_Data.openephys')
-    df = session.recordings[0].events
-    df['timestamp'] = df['timestamp'] / samplerate
-    events = dict()
-    events['data'] = df.to_records()
-    events['format'] = 'legacy_OE'
-    return events
-
 def get_samplerate_from_xml(file_path):
     import xml.etree.ElementTree as ET
     root = ET.parse(file_path).getroot()
