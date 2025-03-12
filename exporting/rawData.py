@@ -77,12 +77,16 @@ def events2mat(dataPath, outputPath):
     savemat(event_mat, events, do_compression=True)
 
 def load_current_events(dataPath):
-    eventExtractor = read_openephys_event(dataPath)
+    from open_ephys.analysis import Session
+    session = Session(dataPath)
+    rec_node = session.recordnodes[0]
+    rec = rec_node.recordings[0]
+    
+    df = rec.events
     events = dict()
-    for id in eventExtractor.channel_ids:
-        newID = id.replace(" ", "_") #MATLAB doesn't like spaces in struct field names
-        events[newID] = eventExtractor.get_events(id)
-    events['format'] = 'binary'
+    events['data'] = df.to_records()
+    events['info'] = rec.info['events']
+    events['format'] = rec.format
     return events
 
 def load_legacy_events(dataPath):
