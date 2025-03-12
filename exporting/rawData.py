@@ -93,13 +93,27 @@ def load_events(dataPath):
     else:
         rec=rec_list[0]
     
-    df = rec.events
+    event_dataframe = rec.events
+    if is_legacy_OE_recording(dataPath):
+        event_dataframe = update_legacy_event_format(event_dataframe, dataPath)
+
     events = dict()
-    events['data'] = df.to_records()
+    events['data'] = event_dataframe.to_records()
     events['format'] = rec.format
     if hasattr(rec, 'info'):
         events['info'] = rec.info['events']
     return events
+
+def update_legacy_event_format(event_dataframe, dataPath):
+    event_dataframe.rename(columns={
+        'channel': 'line',
+        'subprocessor_id': 'stream_index'
+        }, inplace=True)
+
+    event_dataframe['sample_number'] = event_dataframe['timestamp']
+    samplerate = get_samplerate_from_xml(dataPath+'/Continuous_Data.openephys')
+    event_dataframe['timestamp'] = event_dataframe['timestamp'] / samplerate
+    return event_dataframe
 
 def load_current_events(dataPath):
     from open_ephys.analysis import Session
