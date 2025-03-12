@@ -67,14 +67,39 @@ def getChannelProperties(stream):
 
 def events2mat(dataPath, outputPath):
     print(f'Loading event data from {dataPath}')
-    if is_legacy_OE_recording(dataPath):
-        events = load_legacy_events(dataPath)
-    else: 
-        events = load_current_events(dataPath)
+    events = load_events(dataPath)
     makedirs(outputPath, exist_ok=True)
     event_mat = outputPath+'/events.mat'
     print(f"Saving event data to {event_mat}")
     savemat(event_mat, events, do_compression=True)
+
+def load_events(dataPath):
+    if is_legacy_OE_recording(dataPath):
+        from legacy_open_ephys.analysis import Session
+    else:
+        from open_ephys.analysis import Session
+    session = Session(dataPath)
+    if hasattr(session, 'recordnodes'):
+        if len(session.recordnodes)!=1:
+            raise(f"Exactly 1 recod node expected, but {len(session.recordnodes)} found.")
+        else:
+            rec_list = session.recordnodes[0].recordings
+    elif hasattr(session, 'recordings'):
+        rec_list = session.recordings
+    else:
+        raise("No recording found at {dataPath}")
+    if len(rec_list) != 1:
+        raise(f"Exactly 1 recording expected, but {len(rec_list)} found.")
+    else:
+        rec=rec_list[0]
+    
+    df = rec.events
+    events = dict()
+    events['data'] = df.to_records()
+    events['format'] = rec.format
+    if hasattr(rec, 'info'):
+        events['info'] = rec.info['events']
+    return events
 
 def load_current_events(dataPath):
     from open_ephys.analysis import Session
