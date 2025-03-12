@@ -86,7 +86,7 @@ def load_current_events(dataPath):
     return events
 
 def load_legacy_events(dataPath):
-    from open_ephys.analysis import Session
+    from legacy_open_ephys.analysis import Session
     session = Session(dataPath)
     samplerate = get_samplerate_from_xml(dataPath+'/Continuous_Data.openephys')
     df = session.recordings[0].events
