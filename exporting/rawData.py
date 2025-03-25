@@ -9,7 +9,6 @@ from scipy.io import savemat
 from spikeinterface.preprocessing import resample
 
 def main():
-    print('running downSampleRaw.py')
     options = parseInputs()
     events2mat(
         dataPath=options.dataFolder,
@@ -123,13 +122,13 @@ def get_samplerate_from_xml(file_path):
             return float(elem.attrib['samplerate'])
     raise ValueError("samplerate not found in the XML file")
 def parseInputs():
-    parser = ArgumentParser(description='Spike sort a single recording')
+    parser = ArgumentParser(description='Export raw data to MATLAB .mat files')
     parser.add_argument('--dataFolder', 
-        help='Path to data folder',
+        help='Path to Open Ephys recording folder',
         required=True
         )
     parser.add_argument('--exportFolder', 
-        help='Path to data folder',
+        help='Path to folder where the .mat files will be saved',
         required=True
         )
     parser.add_argument('--desiredRate',
