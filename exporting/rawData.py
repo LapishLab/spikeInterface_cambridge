@@ -1,7 +1,7 @@
 
 
 from argparse import ArgumentParser
-from spikeinterface.extractors import read_openephys, read_openephys_event
+from spikeinterface.extractors import read_openephys
 from os import listdir, makedirs
 import numpy as np
 from scipy.io import savemat
