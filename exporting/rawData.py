@@ -1,7 +1,6 @@
 
 
 from argparse import ArgumentParser
-from time import time
 from spikeinterface.extractors import read_openephys, read_openephys_event
 from os import listdir, makedirs
 import numpy as np
