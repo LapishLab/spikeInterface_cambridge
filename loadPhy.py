@@ -1,6 +1,7 @@
 #!//N/u/lapishla/BigRed200/.conda/envs/phy2/bin/python
 import sys
 from os.path import isfile
+from os import remove
 
 sorterOutput = sys.argv[1]
 dat_path = sorterOutput + '/temp_wh.dat'
@@ -24,12 +25,12 @@ def clear_state():
     local_state_file = sorterOutput + '/.phy/state.json'
     if isfile(global_state_file):
         print('Removing global state file')
-        # os.remove(global_state_file)
+        remove(global_state_file)
     else:
         print('Global state file not found in ', global_state_file)
     if isfile(local_state_file):
         print('Removing local state file')
-        # os.remove(local_state_file)
+        remove(local_state_file)
     else:
         print('Local state file not found ', local_state_file)
 
