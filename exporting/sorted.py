@@ -21,7 +21,7 @@ def spikes2mat(sort_folder, export_folder, time_offset=0):
         print(f'Loading spike info from {probe_folder}')
         probe_dataframe = package_sorter_output(probe_folder)
         probe_dataframe['probe'] = path.basename(probe_folder).strip('probe')
-        probe_dataframe['spike_times'] =+ time_offset
+        probe_dataframe['spike_times'] = probe_dataframe['spike_times'] + time_offset
         output_tables.append(probe_dataframe)
     
     clusters = concat(output_tables)
