@@ -66,7 +66,7 @@ def load_recording(sorter_output_folder):
 
 def load_sorting(sorter_output_folder):
     sorting = read_kilosort(sorter_output_folder,keep_good_only=False)
-    
+    # TODO: check that cluster_group.tsv length matches the sorting clusters. This might not be the case if a cluster was missed during curation.
     phy_labels = read_csv(sorter_output_folder+'/cluster_group.tsv', sep='\t', header=0)
     if 'KSLabel' in phy_labels.columns:
         print(f"Warning: this dataset hasn't been manually curated. Using Kilosort labels")
@@ -105,7 +105,15 @@ def package_sorter_output(probe_folder):
     templates = sorting_analyzer.get_extension('templates').get_data() # clusters x time x channel
     qualityMetrics = sorting_analyzer.get_extension('quality_metrics').get_data()
     unit_locations = sorting_analyzer.get_extension("unit_locations").get_data()
-    
+
+    # ## TODO: maybe export params used for each computation and also template STD + other potentially interesting values not exported by .get_data()
+    # t = templates = sorting_analyzer.get_extension('templates')
+    # avg = t.data['average']
+    # std = t.data['STD']
+    # t.params #{'operators': ['average', 'std'], 'ms_before': 1.0, 'ms_after': 2.0}
+    # defaults = sorting_analyzer.get_default_extension_params("templates") 
+    # raise Exception("hacky debug")
+
     unit_list = []
     for ind, id in enumerate(sorting_analyzer.unit_ids):
         unit = dict() # Combine all data types into a single dictionary
